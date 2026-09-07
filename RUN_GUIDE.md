@@ -1,154 +1,113 @@
 # RUN GUIDE
 
-Everything lives in one flat folder. All scripts import each other by name, so don't nest them into subdirectories.
+Windows / PowerShell. All scripts import each other by name — keep them flat in one directory, don't nest them.
 
-```
-survivor_pool/
-├── win_probs_2026.csv      the grid (my screenshot transcription — replace this)
-├── qc_grid.py              validate grid + recover matchups
-├── survivor.py             18-pick baseline model (superseded, kept for reference)
-├── slots_model.py          23-pick optimiser  ← the real one
-├── strikes_path.py         P(≤k strikes) optimiser
-├── weekly.py               WEEKLY PICK ENGINE  ← what you'll use most
-├── prize23.py              200-entrant dollar simulation
-├── market.py               spread → win probability
-├── ratings.py              market-implied power ratings
-├── residual.py             ML residual layer
-├── demo.py                 synthetic validation of the model pipeline
-├── pipeline.py             real-data pipeline (NEEDS NETWORK)
-├── smoke_test.py           verifies everything runs
-└── requirements.txt
-```
+Repo: `github.com/ishaandesai0/survivor-pool` (private)
 
----
+## Files
 
-## 0. Setup (once)
+**Weekly use**
+| file | what it does |
+|---|---|
+| `state.py` | reads `picks.csv`, derives `--used`/`--strikes`, prints the week's commands |
+| `picks.csv` | your pick log — the single source of truth |
+| `pipeline.py` | pulls nflverse data, builds `win_probs_model.csv` |
+| `weekly.py` | ranks this week's picks at the point estimate |
+| `weekly_robust.py` | ranks them under grid uncertainty — **prefer this** |
 
-```bash
-cd survivor_pool
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
+**Analysis**
+| file | what it does |
+|---|---|
+| `stability.py` | which future picks are real information vs placeholder |
+| `prize23.py` | expected dollars in the 200-entrant pool |
+| `tie_analysis.py` | how 1st place resolves when nobody survives |
+| `slots_model.py` | the 23-pick optimal path |
+| `strikes_path.py` | P(≤k strikes) optimiser |
+| `qc_grid.py` | validate a grid, recover matchups from probability complements |
 
-If `nflreadpy` fails to install from PyPI, get it from source:
+**Model internals**
+`market.py` (spread/moneyline → probability, de-vig) · `ratings.py` (market-implied power ratings) · `residual.py` (ML layer) · `fit_decay.py` (fits projection uncertainty) · `demo.py` (synthetic validation) · `smoke_test.py`
 
-```bash
-pip install "nflreadpy @ git+https://github.com/nflverse/nflreadpy"
-```
+**Docs**
+`POOL_STRATEGY.md` · `README_MODEL.md` · `WEEKLY.md`
 
-## 1. Verify everything runs (~20 seconds)
+## Fitted parameters
 
-```bash
-python3 smoke_test.py
-```
+Measured, not guessed. Re-fit monthly at most.
 
-Expect 8 PASS lines. `pipeline.py` is excluded because it needs network.
+| param | value | source |
+|---|---|---|
+| `--base` | 3.717 | `fit_decay.py` — sigma floor, present even 1 week out |
+| `--decay` | 0.355 | `fit_decay.py` — sigma pts per week ahead |
+| `sigma0` | 11.16 | MLE in `market.py` |
+| HFA | 1.64 | fitted in `ratings.py` |
 
----
+## Setup
 
-## 2. Clean the grid — do this first
+Use **python.org** Python, not the Microsoft Store build — the Store version gets auto-updated by Windows and silently breaks its venvs.
 
-```bash
-python3 qc_grid.py
-```
-
-Checks every bye against the official 2026 schedule, then recovers all 272 matchups by pairing teams whose probabilities sum to 100. Cells marked `*` are likely transcription errors.
-
-Weeks 1–5 are already clean. Weeks 6–18 carry ±5pt noise. Fix starred cells in `win_probs_2026.csv` against the screenshot and re-run until residuals drop.
-
-```bash
-python3 qc_grid.py | grep -E "^ +[0-9]+ +[0-9]+"     # just the checksum table
-python3 qc_grid.py | grep -A16 "^Week 12"           # inspect one week
+```powershell
+py -3.14 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe smoke_test.py
 ```
 
----
+Call `.venv\Scripts\python.exe` explicitly. `activate` does not reliably rebind `python` on this setup, and a hardcoded `python3` can silently run a different interpreter than you think.
 
-## 3. Get your Week 1 pick
+Expect 14 PASS. Then check the numbers that matter:
 
-```bash
-python3 weekly.py --week 1
+```powershell
+.venv\Scripts\python.exe demo.py
 ```
 
-Every week after that, pass your actual state:
+- A. efficient market → t ≈ −1.4, finds nothing
+- B. planted 5.5pt QB edge → t ≈ +4.4, finds it
+- C. ratings from spreads → r ≈ 0.9996, MAE ≈ 0.17
 
-```bash
-# single week, one strike, six teams burned
-python3 weekly.py --week 6 --used LAC,TB,SF,CHI,DET,NE --strikes 1
-
-# double week (5, 7, 10, 12, 15) — it searches PAIRS
-python3 weekly.py --week 10 --used LAC,TB,SF,CHI,DET,NE,JAX,DEN,CIN,DAL,SEA --strikes 1
-
-# rank by expected depth instead of survival
-python3 weekly.py --week 8 --used ... --strikes 1 --objective depth
-
-# once your own model is built
-python3 weekly.py --week 4 --grid win_probs_model.csv
-```
-
-**`--used` must list every team you've burned, including from double weeks.** Wrong input here silently produces a wrong answer — it's the one place the tool can't check you.
-
----
-
-## 4. Season plan and dollar view
-
-```bash
-python3 slots_model.py      # the 23-pick optimal path + forced weak picks
-python3 strikes_path.py     # P(≤2 strikes) optimisation
-python3 prize23.py --sims 700    # expected dollars (~4 min)
-```
-
-`prize23.py` is the slow one. Start at `--sims 200` to check it works, then run larger. Differences under ~$10 between strategies are Monte Carlo noise, not signal.
-
----
-
-## 5. Build your own probabilities
-
-**Validate the pipeline before trusting it:**
-
-```bash
-python3 demo.py
-```
-
-Three scenarios with known ground truth. Expect: efficient market → t ≈ −1.4 (finds nothing); planted 5.5pt QB edge → t ≈ +4.4 (finds it); ratings recovered at r ≈ 0.9996. If scenario A reports a real edge, something is leaking.
-
-**Then run against real data (needs network):**
-
-```bash
-python3 pipeline.py --train 2007 2025 --season 2026 --week 1
-```
-
-Writes `win_probs_model.csv` in the same 32×18 shape everything else reads:
-
-```bash
-python3 qc_grid.py                              # after pointing it at the new file
-python3 weekly.py --week 1 --grid win_probs_model.csv
-```
-
-I could not run `pipeline.py` here — this sandbox has no network — so it's the one file you should read before running. Everything else is tested.
-
----
+**If any of those fail, stop.** Exit codes prove a script didn't crash; only these three prove the numerics are still right after a library upgrade.
 
 ## Weekly routine
 
-```bash
-# Tuesday, once lines are posted
-python3 pipeline.py --train 2007 2025 --season 2026 --week <N>
-python3 weekly.py --week <N> --used <everything so far> --strikes <N> --grid win_probs_model.csv
+```powershell
+.venv\Scripts\python.exe state.py
 ```
 
-Re-solve every week. The August plan is a prior, not a commitment.
+It validates `picks.csv` and prints the exact commands with flags filled in. Run those, pick, then log it:
 
----
+```powershell
+# picks.csv — double weeks (5,7,10,12,15) get two rows with the same week
+# week,team,result,notes
+# 1,LAC,W,model 83.0 devig 82.4
+
+git add picks.csv win_probs_model.csv
+git commit -m "Week 1: LAC (W). 0 strikes."
+git push
+```
+
+Never type `--used` by hand. It's the one input nothing else can validate — `state.py` catches `LA` for `LAR`, duplicate teams, too many picks in a week, and infeasible paths.
+
+Raise `--posted-through` as line coverage grows; your commitment horizon should extend as it does.
+
+## Why `win_probs_model.csv` is committed
+
+`.gitignore` deliberately does not ignore it. Committing it weekly makes git history a record of what the model believed *before* each slate resolved. Regenerating it in January from updated lines would leak hindsight into any calibration analysis.
+
+## Known issues
+
+- **`mm.report()` calibration is in-sample.** The ±0.000 reliability numbers come from evaluating the isotonic fit on its own training data. Meaningless as printed. Doesn't affect picks; needs a train/test split to be worth reading.
+- **`fit_decay.py` only measured to d=14**, with thin data at the edge (80 samples vs ~160). Week 17–18 extrapolation is the softest part of the model. `--fit-weeks 2` extends the range at the cost of noisier ratings.
+- **`win_probs_2026.csv`** is a hand transcription of a screenshot with ±5pt noise in Weeks 6–18 and some wrong recovered matchups. Kept only as a fallback and smoke-test fixture. Run everything off `win_probs_model.csv`.
 
 ## Troubleshooting
 
-**`No feasible path remains`** — your `--used` list leaves fewer available teams than remaining slots. Check for typos; abbreviations must match the CSV exactly (`LAR` not `LA`, `WAS` not `WSH`).
+**`No Python at '...WindowsApps...'`** — Store Python was updated or removed and `.venv` points at a dead path. `py -0p` to list interpreters, then rebuild the venv.
 
-**`Three strikes — you're eliminated`** — `--strikes` must be 0, 1, or 2.
+**`ModuleNotFoundError: pyarrow`** — `nflreadpy` returns polars and `.to_pandas()` needs it. In `requirements.txt`, but install directly if missing.
 
-**`pipeline.py` says "No posted lines yet"** — books haven't hung Week 1 yet. Seed with market win totals via `prior_from_win_totals()` in `ratings.py`.
+**`No feasible path remains`** — `--used` leaves fewer teams than remaining slots. Run `state.py --check`.
 
-**`weekly.py` slow on double weeks** — it evaluates every pair (~400 Hungarian solves). A few seconds is normal.
+**`No posted lines yet`** — books haven't hung the week. Seed from win totals via `prior_from_win_totals()` in `ratings.py`.
 
-**Import errors** — you nested the files. Keep them flat in one directory.
+**Import errors** — the files got nested. Keep them flat.
+
+**`git ls-files` shows `__pycache__`** — `.gitignore` only affects untracked files. `git rm -r --cached __pycache__`.
