@@ -1,0 +1,8 @@
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+networkx>=3.0
+scikit-learn>=1.3
+# only needed for pipeline.py (real NFL data, requires network)
+nflreadpy
+pyarrow          # nflreadpy returns polars; .to_pandas() needs this
