@@ -1,0 +1,13 @@
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+qc_output.txt
+*.log
+.vscode/
+.idea/
+*.swp
+.DS_Store
