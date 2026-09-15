@@ -73,8 +73,10 @@ def main():
                     help="sigma floor; get it from fit_decay.py")
     ap.add_argument("--decay", type=float, default=0.355,
                     help="sigma pts per week ahead; get it from fit_decay.py")
-    ap.add_argument("--ridge", type=float, default=2.0,
-                    help="ridge penalty on the power ratings. Lower trusts "
+    ap.add_argument("--ridge", type=float, default=0.5,
+                    help="ridge penalty on the power ratings. Default 0.5 is the "
+                         "value ridge_cv.py measured at ~45 priced games. "
+                         "Lower trusts "
                          "the posted lines more; higher pulls toward the "
                          "prior. This matters most when few games are priced: "
                          "with 45 posted lines instead of 112, a high value "

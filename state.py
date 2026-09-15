@@ -33,6 +33,11 @@ ALIASES = {"LA": "LAR", "WSH": "WAS", "JAC": "JAX", "SD": "LAC", "OAK": "LV",
            "STL": "LAR", "ARZ": "ARI", "TAM": "TB", "GNB": "GB", "KAN": "KC",
            "NWE": "NE", "NOR": "NO", "SFO": "SF"}
 
+# Validated parameters. base/decay from fit_decay.py, ridge from ridge_cv.py.
+# These are printed into the commands below so the defaults inside
+# pipeline.py can never silently disagree with what we measured.
+BASE, DECAY, RIDGE = 3.717, 0.355, 0.5
+
 
 def load(path="picks.csv"):
     df = pd.read_csv(path, dtype=str).fillna("")
@@ -124,13 +129,24 @@ def main():
     used_flag = ",".join(used) if used else ""
     u = f' --used {used_flag}' if used_flag else ""
     print("\n  RUN THIS WEEK:")
+    # --ridge is passed explicitly. ridge_cv.py measured 0.5 as the best
+    # value at this game count; leaving it off would fall back to whatever
+    # pipeline.py defaults to, and a wrong ridge silently compresses the
+    # ratings and flattens every projected game toward a coin flip.
     print(f"    .venv\\Scripts\\python.exe pipeline.py --train 2007 2025 "
-          f"--season 2026 --week {next_week} --base 3.717 --decay 0.355")
+          f"--season 2026 --week {next_week} --base {BASE} --decay {DECAY} "
+          f"--ridge {RIDGE}")
     print(f"    .venv\\Scripts\\python.exe weekly.py --week {next_week}"
-          f"{u} --strikes {strikes} --grid {args.grid}")
+          f"{u} --strikes {strikes} --grid {args.grid} --objective depth")
     print(f"    .venv\\Scripts\\python.exe weekly_robust.py --week {next_week}"
           f"{u} --strikes {strikes} --grid {args.grid} --draws 200"
-          f" --posted-through {min(next_week + 5, 18)}")
+          f" --posted-through {next_week}")
+    print(f"\n  NOTE: --posted-through above is a conservative guess "
+          f"({next_week}).")
+    print("  Set it to the last week that actually has posted lines -- read")
+    print("  'games from posted lines' in the pipeline output. Too high and")
+    print("  stability.py / weekly_robust.py skip perturbing weeks that are")
+    print("  really projections, making those picks look far too certain.")
     print("\n  then log the pick in picks.csv and commit.")
     print("=" * 66)
 

@@ -10,7 +10,12 @@ empty.
 Exit codes only prove a script did not crash. For numerical correctness run
 demo.py and read the three scenario results; that is the harness that
 catches library behaviour changing under you.
+
+Scripts needing network (pipeline.py, fit_decay.py, ridge_cv.py) are
+checked with --help only -- enough to catch an import error or a broken
+argparse, without a 2-minute nflverse pull on every run.
 """
+import os
 import subprocess
 import sys
 import time
@@ -28,19 +33,34 @@ CHECKS = [
     ("weekly.py 2strk",  [PY, "weekly.py", "--week", "9", "--used",
                           "LAC,TB,SF,CHI,DET,NE,JAX,DEN,CIN", "--strikes", "2",
                           "--top", "3"]),
+    ("weekly.py depth",  [PY, "weekly.py", "--week", "2", "--used", "LAC",
+                          "--strikes", "1", "--objective", "depth",
+                          "--top", "3"]),
     ("weekly_robust.py", [PY, "weekly_robust.py", "--week", "1", "--grid",
                           "win_probs_2026.csv", "--draws", "8",
-                          "--posted-through", "6", "--top", "3"]),
+                          "--posted-through", "2", "--top", "3"]),
     ("stability.py",     [PY, "stability.py", "--grid", "win_probs_2026.csv",
                           "--week", "1", "--draws", "8",
-                          "--posted-through", "6"]),
+                          "--posted-through", "2"]),
     ("state.py",         [PY, "state.py"]),
     ("state.py --check", [PY, "state.py", "--check"]),
     ("tie_analysis.py",  [PY, "tie_analysis.py", "--grid",
                           "win_probs_2026.csv", "--sims", "10"]),
     ("prize23.py",       [PY, "prize23.py", "--sims", "10"]),
     ("demo.py",          [PY, "demo.py"]),
+    # import + argparse only; these hit the network when run for real
+    ("pipeline.py -h",   [PY, "pipeline.py", "--help"]),
+    ("fit_decay.py -h",  [PY, "fit_decay.py", "--help"]),
+    ("ridge_cv.py -h",   [PY, "ridge_cv.py", "--help"]),
 ]
+
+# field.py needs a sheet to parse; only check it if one is present
+SHEET = os.path.join("sheets", "week1_sheet.txt")
+if os.path.exists(SHEET):
+    CHECKS += [
+        ("field.py parse",  [PY, "field.py", "parse", SHEET, "--week", "1"]),
+        ("field.py report", [PY, "field.py", "report", "--me", "Ishaan"]),
+    ]
 
 fails = 0
 print(f"interpreter: {PY}\n")
@@ -56,7 +76,7 @@ for name, cmd in CHECKS:
 if fails:
     print(f"\n{fails} failing.")
 else:
-    print("\nAll good. Now run demo.py and CHECK ITS NUMBERS:")
+    print(f"\nAll {len(CHECKS)} good. Now run demo.py and CHECK ITS NUMBERS:")
     print("  A. efficient market      -> t ~ -1.4, finds nothing")
     print("  B. planted 5.5pt QB edge -> t ~ +4.4, finds it")
     print("  C. ratings from spreads  -> r ~ 0.9996, MAE ~ 0.17")

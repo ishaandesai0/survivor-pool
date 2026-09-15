@@ -24,6 +24,11 @@ Two conversions are fitted:
 
 The shipped default blends them: isotonic where there's data, probit in the
 tails. That is not a hedge, it's using each where it is actually valid.
+
+KNOWN ISSUE: MarketModel.report() evaluates the isotonic fit on its own
+training data, so its reliability table shows near-zero error by
+construction. Those numbers are meaningless as printed. Fixing it needs a
+train/test split. It does not affect which team the models pick.
 """
 from dataclasses import dataclass
 import numpy as np
@@ -130,7 +135,8 @@ class MarketModel:
         print(f"  brier                   : {brier(won, p):.4f}")
         print(f"  expected calib. error   : {ece(won, p)*100:.2f}%")
         print(f"  accuracy (p>.5)         : {np.mean((p > .5) == (np.asarray(won) == 1))*100:.1f}%")
-        print("\n  reliability:")
+        print("\n  reliability (IN-SAMPLE — see KNOWN ISSUE above; the")
+        print("  near-zero errors are isotonic fitting its own data):")
         print(f"    {'bucket':<12}{'n':>6}{'pred':>8}{'actual':>8}{'err':>8}")
         for r in calibration_table(won, p):
             print(f"    {r['bucket']:<12}{r['n']:>6}{r['predicted']:>8.3f}"
@@ -139,9 +145,21 @@ class MarketModel:
 
 
 def moneyline_to_prob(ml):
-    """Devig-free raw implied probability from American odds."""
+    """
+    Raw implied probability from American odds (vig still included).
+
+    np.where evaluates BOTH branches for every element, so a moneyline of
+    exactly -100 (a true pick'em, and it does appear on real slates) makes
+    the positive-odds branch divide by zero. The selected value is still
+    correct, but the warning would mask a genuine numerical problem later,
+    so compute each branch only where it applies.
+    """
     ml = np.asarray(ml, float)
-    return np.where(ml < 0, -ml / (-ml + 100.0), 100.0 / (ml + 100.0))
+    out = np.empty_like(ml)
+    neg = ml < 0
+    out[neg] = -ml[neg] / (-ml[neg] + 100.0)
+    out[~neg] = 100.0 / (ml[~neg] + 100.0)
+    return out if out.ndim else float(out)
 
 
 def devig(p_home, p_away, method="multiplicative"):
