@@ -52,6 +52,7 @@ CHECKS = [
     ("pipeline.py -h",   [PY, "pipeline.py", "--help"]),
     ("fit_decay.py -h",  [PY, "fit_decay.py", "--help"]),
     ("ridge_cv.py -h",   [PY, "ridge_cv.py", "--help"]),
+    ("prekick.py -h",    [PY, "prekick.py", "--help"]),
 ]
 
 # field.py needs a sheet to parse; only check it if one is present

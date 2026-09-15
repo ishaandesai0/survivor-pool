@@ -22,7 +22,7 @@ FILES = [
     "weekly.py", "weekly_robust.py", "stability.py", "ratings.py",
     "market.py", "residual.py", "prize23.py", "tie_analysis.py",
     "slots_model.py", "qc_grid.py", "survivor.py", "strikes_path.py",
-    "fit_decay.py", "demo.py", "selfcheck.py",
+    "fit_decay.py", "demo.py", "selfcheck.py", "prekick.py",
 ]
 
 # The validated parameters. Any drift between these and what the code
