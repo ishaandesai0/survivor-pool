@@ -10,4 +10,5 @@ qc_output.txt
 .vscode/
 .idea/
 *.swp
-.DS_Storefield_state.csv
+.DS_Store
+field_state.csv
