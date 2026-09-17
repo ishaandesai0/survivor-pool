@@ -251,8 +251,21 @@ def main():
             shown = 0
             for t in cand:
                 sub = inj[inj.team == t]
-                if sc:
-                    sub = sub[sub[sc].isin(WATCH_STATUS)]
+                # Report status is only populated once a team files its final
+                # designation -- Friday for Sunday games, Thursday for TNF.
+                # Mid-week that column is empty for almost everyone, so
+                # filtering on it alone discards ~97% of the rows and reports
+                # "nothing to see" for a team with a QB who did not practise.
+                # So: keep a row if it has a watch-list designation OR if the
+                # player missed/was limited in practice.
+                if sc or pc:
+                    keep = pd.Series(False, index=sub.index)
+                    if sc:
+                        keep |= sub[sc].isin(WATCH_STATUS)
+                    if pc:
+                        keep |= sub[pc].astype(str).str.contains(
+                            "Did Not Participate|Limited", case=False, na=False)
+                    sub = sub[keep]
                 if sub.empty:
                     continue
                 qbs = sub[sub.position == "QB"] if "position" in sub else sub.iloc[:0]
@@ -260,18 +273,40 @@ def main():
                 print(f"\n  {t}{tag}")
                 for _, r in sub.iterrows():
                     pos = r.get("position", "?")
-                    if pos not in IMPORTANT_POS and not len(qbs):
+                    if pos not in IMPORTANT_POS:
                         continue
                     nm = r.get(nc, "?") if nc else "?"
-                    st = r.get(sc, "?") if sc else "?"
-                    inn = r.get(ic, "") if ic else ""
+                    st = r.get(sc, None) if sc else None
+                    st = "-" if (st is None or pd.isna(st)) else str(st)
+                    # fall back to the practice injury when no report injury
+                    inn = r.get(ic, None) if ic else None
+                    if inn is None or pd.isna(inn):
+                        inn = r.get("practice_primary_injury", "") or ""
                     pr = r.get(pc, "") if pc else ""
-                    mark = " <<<" if pos in KEY_POS and st in BAD_STATUS else ""
+                    pr = "" if pd.isna(pr) else str(pr)
+                    short = (pr.replace("Did Not Participate In Practice", "DNP")
+                               .replace("Limited Participation in Practice", "LTD")
+                               .replace("Full Participation in Practice", "FULL"))
+                    # "resting player" on a big favourite is not an injury
+                    resting = "not injury related" in str(inn).lower()
+                    mark = ""
+                    if pos in KEY_POS and (st in BAD_STATUS or
+                                           (short == "DNP" and not resting)):
+                        mark = "  <<< KEY"
+                    elif resting:
+                        mark = "  (rest)"
                     print(f"    {pos:<4}{str(nm)[:22]:<23}{st:<13}"
-                          f"{str(inn)[:16]:<17}{str(pr)[:18]}{mark}")
+                          f"{str(inn)[:26]:<27}{short:<5}{mark}")
                     shown += 1
             if not shown:
-                print("  Nothing on the watch list for these teams.")
+                print("  No designations or practice absences at important")
+                print("  positions for these teams.")
+            else:
+                print("\n  DNP/LTD/FULL = practice participation. A blank")
+                print("  status column just means the team has not filed its")
+                print("  final designation yet (Friday for Sunday games).")
+                print("  '(rest)' is a healthy starter being held out -- common")
+                print("  for heavy favourites and not a concern.")
 
     print("\n" + "=" * 70)
     print("HOW TO USE THIS")
