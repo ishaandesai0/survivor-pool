@@ -61,6 +61,32 @@ def cv_error(games, teams, ridge, folds=5, seed=0, weights=None):
     return float(np.mean(np.abs(e))), float(np.sqrt(np.mean(e**2))), len(e)
 
 
+def _tied(df, col, se_col, rel_tol=0.02):
+    """
+    Which ridge values are genuinely indistinguishable from the best?
+
+    The textbook one-standard-error rule fails here. Our SE comes mostly
+    from BETWEEN-SEASON variance, not from uncertainty about the curve's
+    shape, so it can be large (0.21 MAE) while the curve itself is
+    well-resolved. Applying 1-SE blindly swept in ridge=1.0 at MAE 2.627
+    when the best was 2.485 -- a value that is plainly worse but happened
+    to fit inside a wide error bar.
+
+    So require BOTH: within 1 SE of the best AND within `rel_tol` of the
+    best MAE in relative terms. The second condition is what stops a wide
+    error bar from endorsing a visibly worse value.
+    """
+    best = df.loc[df[col].idxmin()]
+    thresh = min(best[col] + best[se_col], best[col] * (1 + rel_tol))
+    return sorted(df[df[col] <= thresh].ridge.tolist())
+
+
+def _recommend(df, col, se_col, rel_tol=0.02):
+    """Largest ridge among the genuine ties -- over-regularising is the
+    cheaper error when the system is underdetermined."""
+    return max(_tied(df, col, se_col, rel_tol))
+
+
 def sweep(games, teams, label, folds=5, reps=8):
     """Average CV error over several random fold assignments."""
     rows = []
@@ -81,13 +107,11 @@ def sweep(games, teams, label, folds=5, reps=8):
         mark = "  <-- best" if x.ridge == best.ridge else ""
         print(f"  {x.ridge:>7.2f}{x.mae:>9.3f}{x.mae_se:>7.3f}"
               f"{x.rmse:>9.3f}{mark}")
-    # anything within 1 SE of the best is statistically tied; prefer the
-    # LARGER ridge among ties, since more regularisation is the safer error
-    tied = df[df.mae <= best.mae + best.mae_se]
-    pick = tied.ridge.max()
-    print(f"  best {best.ridge:g}; within 1 SE: "
-          f"{[f'{v:g}' for v in tied.ridge.tolist()]}")
-    print(f"  -> use --ridge {pick:g}  (largest among the statistical ties)")
+    pick = _recommend(df, "mae", "mae_se")
+    tied = _tied(df, "mae", "mae_se")
+    print(f"  best {best.ridge:g}; within tolerance: "
+          f"{[f'{v:g}' for v in tied]}")
+    print(f"  -> use --ridge {pick:g}")
     return pick, df
 
 
@@ -141,8 +165,13 @@ def main():
         for _, x in agg.iterrows():
             mark = "  <-- best" if x.ridge == best.ridge else ""
             print(f"  {x.ridge:>7.2f}{x['mean']:>9.3f}{x['sem']:>7.3f}{mark}")
-        tied = agg[agg["mean"] <= best["mean"] + best["sem"]]
-        pick_hist = tied.ridge.max()
+        pick_hist = _recommend(agg.rename(columns={"mean": "mae",
+                                                    "sem": "mae_se"}),
+                               "mae", "mae_se")
+        tied = _tied(agg.rename(columns={"mean": "mae", "sem": "mae_se"}),
+                     "mae", "mae_se")
+        print(f"  best {best.ridge:g}; within tolerance: "
+              f"{[f'{v:g}' for v in tied]}")
         print(f"  -> use --ridge {pick_hist:g}")
 
         print("\n" + "=" * 62)

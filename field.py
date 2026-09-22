@@ -100,10 +100,16 @@ def cmd_report(args):
     print(f"FIELD STATE — weeks {weeks}, {df.name.nunique()} entrants")
     print("=" * 68)
 
-    # strikes per entrant (cumulative)
-    st = df.groupby("name")["strike"].sum()
+    # The X column on each sheet is CUMULATIVE strikes ENTERING that week,
+    # not a strike earned that week. Summing it double-counts: an entrant
+    # who struck in week 1 carries an X on every later sheet. Take the
+    # value from the most recent sheet instead.
+    latest = df.week.max()
+    st = (df[df.week == latest].groupby("name")["strike"].max()
+          .reindex(df.name.unique()).fillna(0).astype(int))
     alive = st[st < 3]
-    print("\n  strike distribution:")
+    print(f"\n  strike distribution (ENTERING week {latest}; the sheet's X")
+    print(f"  column reflects results through week {latest - 1}):")
     for k in range(4):
         n = int((st == k).sum()) if k < 3 else int((st >= 3).sum())
         lab = f"{k} strikes" if k < 3 else "3+ (eliminated)"
@@ -130,12 +136,16 @@ def cmd_report(args):
             print(f"\n  '{args.me}' not found in the sheet")
             return
         used = mine.team.tolist()
-        s = int(mine.strike.sum())
+        s = int(st.get(mine.name.iloc[0], 0))
         print("\n" + "=" * 68)
         print(f"YOU — {mine.name.iloc[0]}")
         print("=" * 68)
-        print(f"  strikes     : {s}/3   budget {2-s} more loss"
-              f"{'' if 2-s == 1 else 'es'}")
+        print(f"  strikes     : {s}/3 entering week {latest}"
+              f"   budget {2-s} more loss{'' if 2-s == 1 else 'es'}")
+        print(f"  NOTE: this is the state BEFORE week {latest} results. If "
+              f"week {latest}")
+        print(f"  has been played, add your own result -- picks.csv is the")
+        print(f"  authority for your current strike count.")
         print(f"  burned      : {','.join(used)}")
         better = int((st < s).sum())
         tied = int((st == s).sum())

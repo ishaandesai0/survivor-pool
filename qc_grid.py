@@ -87,7 +87,15 @@ def recover_matchups(df, week):
 
 
 def main():
-    df = load()
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Validate a win-probability grid and recover matchups.")
+    ap.add_argument("--grid", default="win_probs_2026.csv",
+                    help="grid to check. Use win_probs_model.csv for the "
+                         "live model output -- the default is the original "
+                         "screenshot transcription, kept only as a fixture.")
+    args = ap.parse_args()
+    df = load(args.grid)
 
     print("=" * 68)
     print("BYE-WEEK CHECK (vs official 2026 schedule)")
