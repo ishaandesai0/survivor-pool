@@ -191,6 +191,10 @@ def simulate(grid, entrants, me_idx, week, params, n_sims, seed=0,
     pay_tot = 0.0
     top5 = div = 0
     my_final = []
+    all_pay = np.zeros(N)          # audit: EV per entrant
+    sim_totals = []                # audit: dollars paid out each season
+    final_strikes = np.zeros((0, 0))
+    strike_log = []
 
     for _ in range(n_sims):
         used = base_used.copy()
@@ -270,10 +274,17 @@ def simulate(grid, entrants, me_idx, week, params, n_sims, seed=0,
         top5 += before > 0
         div += (pay[me_idx] - before) > 0
         my_final.append(st[me_idx])
+        all_pay += pay
+        sim_totals.append(float(pay.sum()))
+        strike_log.append(st.copy())
 
     return {"ev": pay_tot / n_sims, "top5": 100 * top5 / n_sims,
             "div": 100 * div / n_sims,
-            "survive": 100 * np.mean(np.array(my_final) <= 2)}
+            "survive": 100 * np.mean(np.array(my_final) <= 2),
+            "all_ev": all_pay / n_sims,
+            "sim_totals": np.array(sim_totals),
+            "strikes_final": np.array(strike_log),
+            "start_strikes": base_str}
 
 
 def main():
@@ -283,6 +294,10 @@ def main():
     ap.add_argument("--me", default="Ishaan")
     ap.add_argument("--week", type=int, required=True)
     ap.add_argument("--sims", type=int, default=300)
+    ap.add_argument("--audit", action="store_true",
+                    help="verify the sim is a closed system: full pot paid "
+                         "every season, mean EV = fair share, EV monotone "
+                         "in strikes")
     ap.add_argument("--results", default="results_2026.csv",
                     help="apply the latest week's results on top of the "
                          "sheet, which only shows strikes ENTERING that week")
@@ -399,6 +414,47 @@ def main():
     print(f"  cash a top-5 place     : {r['top5']:.1f}%")
     print(f"  win your division      : {r['div']:.1f}%")
     print("=" * 68)
+
+    if args.audit:
+        POT = sum(OVERALL) + DIV_PRIZE * N_DIV
+        tot = r["sim_totals"]
+        ev = r["all_ev"]
+        print("\n" + "=" * 68)
+        print("CONSISTENCY AUDIT")
+        print("=" * 68)
+        print("  A pool simulation must be a closed system: every season")
+        print("  pays out the full pot, and the average entrant earns")
+        print("  exactly their fair share. If either fails, the payout")
+        print("  logic is leaking money and every EV above is suspect.")
+
+        bad = int((np.abs(tot - POT) > 0.01).sum())
+        print(f"\n  [{'OK  ' if not bad else 'FAIL'}] every season pays "
+              f"${POT:,}")
+        print(f"         min ${tot.min():,.2f}  max ${tot.max():,.2f}  "
+              f"seasons off: {bad}/{len(tot)}")
+
+        mean_ev = float(ev.mean())
+        fair = POT / len(ev)
+        okm = abs(mean_ev - fair) < 0.01
+        print(f"  [{'OK  ' if okm else 'FAIL'}] mean EV equals fair share")
+        print(f"         mean ${mean_ev:.4f}  vs fair ${fair:.4f}")
+
+        print(f"\n  EV by starting strike count (must be monotone):")
+        prev = None
+        mono = True
+        for k in sorted(set(r["start_strikes"])):
+            m = r["start_strikes"] == k
+            v = float(ev[m].mean())
+            if prev is not None and v > prev + 1e-9:
+                mono = False
+            prev = v
+            mark = "  <-- you" if k == r["start_strikes"][me] else ""
+            print(f"    {k} strikes  n={m.sum():>3}   EV ${v:>7.2f}{mark}")
+        print(f"  [{'OK  ' if mono else 'FAIL'}] more strikes -> less money")
+
+        print(f"\n  your EV rank: "
+              f"{int((ev > ev[me]).sum()) + 1} of {len(ev)}")
+        print("=" * 68)
 
 
 if __name__ == "__main__":
