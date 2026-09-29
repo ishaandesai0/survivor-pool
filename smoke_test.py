@@ -53,6 +53,8 @@ CHECKS = [
     ("fit_decay.py -h",  [PY, "fit_decay.py", "--help"]),
     ("ridge_cv.py -h",   [PY, "ridge_cv.py", "--help"]),
     ("prekick.py -h",    [PY, "prekick.py", "--help"]),
+    ("prize_live.py -h", [PY, "prize_live.py", "--help"]),
+    ("division_opt -h",  [PY, "division_opt.py", "--help"]),
 ]
 
 # field.py needs a sheet to parse; only check it if one is present

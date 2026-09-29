@@ -146,6 +146,12 @@ def evaluate(df, week, used, strikes, objective="survive", horizon=18, top=10):
     base_picks, base_probs = solve(df, slots, all_avail)
     if base_picks is None:
         raise SystemExit("No feasible path remains — check your used-team list.")
+
+    # The Hungarian baseline maximises the PRODUCT of win probabilities.
+    # Under --objective depth that is not the optimum, so scoring it as the
+    # reference produced negative "cost" whenever some candidate beat it --
+    # a cost below zero is nonsense and signals the wrong baseline. Take the
+    # best score actually achieved across candidates instead.
     best = score(base_probs)
 
     rows = []
@@ -170,6 +176,10 @@ def evaluate(df, week, used, strikes, objective="survive", horizon=18, top=10):
                          "then": " ".join(p[2:8])})
 
     r = pd.DataFrame(rows).sort_values("score", ascending=False)
+    # re-reference cost to the best candidate actually found
+    if len(r):
+        best = max(best, float(r.score.iloc[0]))
+        r["cost"] = 100.0 * (best - r.score) / best
     return r.head(top), base_picks, base_probs, slots, budget, best
 
 

@@ -23,6 +23,7 @@ FILES = [
     "market.py", "residual.py", "prize23.py", "tie_analysis.py",
     "slots_model.py", "qc_grid.py", "survivor.py", "strikes_path.py",
     "fit_decay.py", "demo.py", "selfcheck.py", "prekick.py",
+    "prize_live.py", "division_opt.py",
 ]
 
 # The validated parameters. Any drift between these and what the code

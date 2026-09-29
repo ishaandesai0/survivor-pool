@@ -157,7 +157,10 @@ def main():
     ap.add_argument("--roster", default="division_roster.csv")
     ap.add_argument("--me", default="Ishaan")
     ap.add_argument("--week", type=int, required=True)
-    ap.add_argument("--sims", type=int, default=400)
+    ap.add_argument("--sims", type=int, default=2500,
+                    help="400 cannot resolve the ~1pp differences this tool "
+                         "looks for; at 400 sims a 4.2%% vs 3.2%% gap is "
+                         "17 events vs 13, well inside noise")
     ap.add_argument("--chalk", type=float, default=15.0,
                     help="how hard rivals chase the favourite")
     ap.add_argument("--top", type=int, default=8)
@@ -220,6 +223,17 @@ def main():
     for _, x in df.iterrows():
         print(f"  {x['pick']:<6}{x['win%']:>6.0f}%{x.div_win:>8.1f}%"
               f"{x.div_tie:>6.1f}%{x['rank']:>10.2f}{x.leaders_burned:>12.0f}")
+
+    # report whether the division ranking is actually resolvable
+    import math
+    n = args.sims
+    top2 = df.head(2)
+    if len(top2) == 2:
+        p1, p2 = top2.div_win.iloc[0] / 100, top2.div_win.iloc[1] / 100
+        se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n) * 100
+        gap = top2.div_win.iloc[0] - top2.div_win.iloc[1]
+        print(f"\n  top-two gap {gap:.2f}pp  vs  +/-{se:.2f}pp "
+              f"({'RESOLVED' if gap > 2 * se else 'WITHIN NOISE'})")
 
     best_p = df.loc[df["win%"].idxmax(), "pick"]
     best_d = df.iloc[0]["pick"]
