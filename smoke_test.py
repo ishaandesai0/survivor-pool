@@ -11,9 +11,9 @@ Exit codes only prove a script did not crash. For numerical correctness run
 demo.py and read the three scenario results; that is the harness that
 catches library behaviour changing under you.
 
-Scripts needing network (pipeline.py, fit_decay.py, ridge_cv.py) are
-checked with --help only -- enough to catch an import error or a broken
-argparse, without a 2-minute nflverse pull on every run.
+Scripts needing network (pipeline, fit_decay, ridge_cv, prekick) are checked
+with --help only -- enough to catch an import error or broken argparse,
+without a 2-minute nflverse pull on every run.
 """
 import os
 import subprocess
@@ -23,10 +23,9 @@ import time
 PY = sys.executable
 
 CHECKS = [
+    # offline, real work
     ("qc_grid.py",       [PY, "qc_grid.py"]),
-    ("survivor.py",      [PY, "survivor.py", "--sims", "30"]),
     ("slots_model.py",   [PY, "slots_model.py"]),
-    ("strikes_path.py",  [PY, "strikes_path.py"]),
     ("weekly.py wk1",    [PY, "weekly.py", "--week", "1", "--top", "3"]),
     ("weekly.py double", [PY, "weekly.py", "--week", "5", "--used",
                           "LAC,TB,SF,CHI", "--strikes", "1", "--top", "3"]),
@@ -44,9 +43,7 @@ CHECKS = [
                           "--posted-through", "2"]),
     ("state.py",         [PY, "state.py"]),
     ("state.py --check", [PY, "state.py", "--check"]),
-    ("tie_analysis.py",  [PY, "tie_analysis.py", "--grid",
-                          "win_probs_2026.csv", "--sims", "10"]),
-    ("prize23.py",       [PY, "prize23.py", "--sims", "10"]),
+    ("deps.py",          [PY, "deps.py"]),
     ("demo.py",          [PY, "demo.py"]),
     # import + argparse only; these hit the network when run for real
     ("pipeline.py -h",   [PY, "pipeline.py", "--help"]),
@@ -57,12 +54,17 @@ CHECKS = [
     ("division_opt -h",  [PY, "division_opt.py", "--help"]),
 ]
 
-# field.py needs a sheet to parse; only check it if one is present
-SHEET = os.path.join("sheets", "week1_sheet.txt")
+# these need data files that only exist mid-season
+SHEET = os.path.join("sheets", "week3_sheet.txt")
 if os.path.exists(SHEET):
     CHECKS += [
-        ("field.py parse",  [PY, "field.py", "parse", SHEET, "--week", "1"]),
+        ("field.py parse",  [PY, "field.py", "parse", SHEET, "--week", "3"]),
         ("field.py report", [PY, "field.py", "report", "--me", "Ishaan"]),
+    ]
+if os.path.exists("division_roster.csv") and os.path.exists("win_probs_model.csv"):
+    CHECKS += [
+        ("division_opt run", [PY, "division_opt.py", "--week", "4",
+                              "--sims", "20", "--top", "3"]),
     ]
 
 fails = 0

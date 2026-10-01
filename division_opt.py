@@ -159,8 +159,8 @@ def main():
     ap.add_argument("--week", type=int, required=True)
     ap.add_argument("--sims", type=int, default=2500,
                     help="400 cannot resolve the ~1pp differences this tool "
-                         "looks for; at 400 sims a 4.2%% vs 3.2%% gap is "
-                         "17 events vs 13, well inside noise")
+                         "looks for; at 400 a 4.2%% vs 3.2%% gap is 17 events "
+                         "vs 13, well inside noise")
     ap.add_argument("--chalk", type=float, default=15.0,
                     help="how hard rivals chase the favourite")
     ap.add_argument("--top", type=int, default=8)
@@ -193,13 +193,10 @@ def main():
              if t not in mine["burned"] and pd.notna(grid.loc[t, args.week])]
     avail.sort(key=lambda t: -grid.loc[t, args.week])
 
-    print("=" * 72)
-    print(f"DIVISION-AWARE PICKS — week {args.week}, {len(members)} members")
-    print("=" * 72)
-    print(f"  you: {mine['name']}, {mine['strikes']} strike(s), "
-          f"burned {','.join(sorted(mine['burned']))}")
     ahead = [m for m in members if m["strikes"] < mine["strikes"]]
-    print(f"  ahead of you: {len(ahead)}")
+    print(f"DIVISION wk{args.week} | {len(members)} members, "
+          f"{len(ahead)} ahead | you {mine['strikes']} strike(s), "
+          f"burned {','.join(sorted(mine['burned']))}")
 
     # how exposed is each candidate to the leaders?
     lead_burn = Counter()
@@ -219,37 +216,31 @@ def main():
 
     print(f"\n  {'pick':<6}{'win%':>7}{'div win':>9}{'+tie':>7}"
           f"{'avg rank':>10}{'led.burned':>12}")
-    print("  " + "-" * 62)
     for _, x in df.iterrows():
         print(f"  {x['pick']:<6}{x['win%']:>6.0f}%{x.div_win:>8.1f}%"
               f"{x.div_tie:>6.1f}%{x['rank']:>10.2f}{x.leaders_burned:>12.0f}")
 
     # report whether the division ranking is actually resolvable
     import math
-    n = args.sims
     top2 = df.head(2)
     if len(top2) == 2:
         p1, p2 = top2.div_win.iloc[0] / 100, top2.div_win.iloc[1] / 100
-        se = math.sqrt(p1 * (1 - p1) / n + p2 * (1 - p2) / n) * 100
+        se = math.sqrt(p1 * (1 - p1) / args.sims
+                       + p2 * (1 - p2) / args.sims) * 100
         gap = top2.div_win.iloc[0] - top2.div_win.iloc[1]
-        print(f"\n  top-two gap {gap:.2f}pp  vs  +/-{se:.2f}pp "
+        print(f"\n  top-two gap {gap:.2f}pp vs +/-{se:.2f}pp "
               f"({'RESOLVED' if gap > 2 * se else 'WITHIN NOISE'})")
 
     best_p = df.loc[df["win%"].idxmax(), "pick"]
     best_d = df.iloc[0]["pick"]
-    print(f"\n  highest win probability : {best_p}")
-    print(f"  best for division prize : {best_d}")
+    print(f"\n  best win% {best_p} | best division {best_d}")
     if best_p == best_d:
-        print("  They agree — no tradeoff this week.")
+        print("  -> agree")
     else:
-        gap = (df[df["pick"] == best_p].div_win.iloc[0]
-               - df.iloc[0].div_win)
-        print(f"  Taking {best_d} over {best_p} gains {-gap:.1f}pp of division")
-        print(f"  win probability but costs "
-              f"{grid.loc[best_p, args.week]-grid.loc[best_d, args.week]:.0f}pp "
-              f"of raw win probability.")
-        print("  With 1 strike and no margin, that trade is usually bad.")
-    print("=" * 72)
+        gap = (df[df["pick"] == best_p].div_win.iloc[0] - df.iloc[0].div_win)
+        print(f"  -> {best_d} gains {-gap:.1f}pp division, costs "
+              f"{grid.loc[best_p, args.week]-grid.loc[best_d, args.week]:.0f}pp"
+              f" win%. With no margin that trade is usually bad.")
 
 
 if __name__ == "__main__":

@@ -98,40 +98,33 @@ def parse_sheet(path, week):
 def cmd_parse(args):
     new = parse_sheet(args.path, args.week)
     want = 2 if args.week in DOUBLE_WEEKS else 1
-    per = new.groupby("name").size()
-    odd = per[per != want]
-    print(f"parsed {len(new)} entries for week {args.week}")
-    print(f"  distinct entrants : {new.name.nunique()}")
-    print(f"  strike marks (sum): {int(new.strike.sum())}")
-    print(f"  distribution      : "
-          f"{dict(sorted(Counter(new.strike).items()))}")
+    odd = new.groupby("name").size()
+    odd = odd[odd != want]
+    print(f"wk{args.week}: {len(new)} rows, {new.name.nunique()} entrants, "
+          f"strikes {dict(sorted(Counter(new.strike).items()))}")
     if len(odd):
-        print(f"\n  WARNING: {len(odd)} entrants have != {want} picks:")
-        for nm, k in odd.head(8).items():
-            print(f"    {nm!r}: {k}")
+        print(f"  WARNING {len(odd)} entrants have != {want} picks: "
+              f"{list(odd.index[:6])}")
 
     if os.path.exists(STATE):
         old = pd.read_csv(STATE)
-        old = old[old.week != args.week]
-        out = pd.concat([old, new], ignore_index=True)
+        out = pd.concat([old[old.week != args.week], new], ignore_index=True)
     else:
         out = new
 
-    # roster drift is the tell that names are fragmenting
     per_week = out.groupby("week").name.nunique()
-    if per_week.nunique() > 1 or out.name.nunique() != per_week.max():
+    if out.name.nunique() != per_week.max():
         seen = {w: set(g.name) for w, g in out.groupby("week")}
-        base = max(seen, key=lambda w: len(seen[w]))
-        print(f"\n  WARNING: {out.name.nunique()} distinct names across weeks "
-              f"but {per_week.to_dict()} per week.")
-        print("  The same person is being counted twice. Offenders:")
+        common = set.intersection(*seen.values())
+        print(f"  WARNING {out.name.nunique()} distinct names vs "
+              f"{per_week.to_dict()} per week — same person counted twice:")
         for w in sorted(seen):
-            extra = sorted(seen[w] - set.intersection(*seen.values()))[:8]
+            extra = sorted(seen[w] - common)[:6]
             if extra:
-                print(f"    week {w}: {extra}")
+                print(f"    wk{w}: {extra}")
 
     out.sort_values(["week", "name"]).to_csv(STATE, index=False)
-    print(f"\nwrote {STATE} ({len(out)} rows, weeks "
+    print(f"  wrote {STATE} ({len(out)} rows, weeks "
           f"{sorted(out.week.unique())})")
 
 
@@ -145,52 +138,39 @@ def cmd_report(args):
     st = (df[df.week == latest].groupby("name")["strike"].max()
           .reindex(df.name.unique()).fillna(0).astype(int))
 
-    print("=" * 68)
-    print(f"FIELD STATE — weeks {weeks}, {n_ent} entrants")
-    print("=" * 68)
-    print(f"\n  strikes ENTERING week {latest} "
-          f"(the sheet's X column reflects games resolved at the time it")
-    print(f"  was published -- including any Thursday game that week):")
-    for k in range(4):
-        n = int((st == k).sum()) if k < 3 else int((st >= 3).sum())
-        lab = f"{k} strikes" if k < 3 else "3+ eliminated"
-        print(f"    {lab:<16}{n:>5}  {'#' * int(n / 4)}")
+    dist = {k: int((st == k).sum()) if k < 3 else int((st >= 3).sum())
+            for k in range(4)}
+    print(f"FIELD wk{[int(w) for w in weeks]} | {n_ent} entrants")
+    print("  strikes entering wk%d: " % latest + "  ".join(
+        f"{k if k < 3 else '3+'}:{v}" for k, v in dist.items()))
 
-    print(f"\n  teams burned across the field (of {n_ent} entrants):")
     burn = df.groupby("team")["name"].nunique().sort_values(ascending=False)
-    for t, n in burn.items():
-        print(f"    {t:<5}{n:>5}  {100*n/n_ent:>5.1f}%  {'#' * int(n / 4)}")
+    print("  burned: " + "  ".join(f"{t} {n}" for t, n in burn.head(12).items()))
 
-    print("\n  pick popularity by week:")
+    print("  popularity:")
     for w in weeks:
         c = Counter(df[df.week == w].team)
         print(f"    W{w}: " + "  ".join(f"{t} {k}" for t, k in c.most_common(5)))
 
     if args.me:
-        key = canon(args.me)
-        mine = df[df.name.str.contains(key.split()[0], case=False, na=False)]
+        key = canon(args.me).split()[0]
+        mine = df[df.name.str.contains(key, case=False, na=False)]
         if mine.empty:
-            print(f"\n  '{args.me}' not found")
+            print(f"  '{args.me}' not found")
             return
         nm = mine.name.iloc[0]
         used = df[df.name == nm].team.tolist()
-        s = int(st.get(nm, 0))
-        print("\n" + "=" * 68)
-        print(f"YOU — {nm}")
-        print("=" * 68)
-        print(f"  strikes entering wk{latest}: {s}/3   budget {2-s}")
-        print(f"  burned : {','.join(used)}")
-        print(f"  ahead {int((st < s).sum())}   tied {int((st == s).sum())-1}"
-              f"   behind {int((st > s).sum())}")
-        print(f"\n  --used {','.join(used)} --strikes {s}")
-        print(f"  (picks.csv is the authority for your CURRENT strike count;")
-        print(f"   this sheet predates week {latest}'s later games)")
+        s_ = int(st.get(nm, 0))
+        print(f"\n  YOU {nm} | {s_} strike(s), budget {2-s_} | "
+              f"ahead {int((st < s_).sum())} "
+              f"tied {int((st == s_).sum())-1} "
+              f"behind {int((st > s_).sum())}")
+        print(f"  --used {','.join(used)} --strikes {s_}   "
+              f"(picks.csv authoritative; sheet predates wk{latest} late games)")
         hold = [(t, burn[t]) for t in burn.index
                 if t not in used and burn[t] >= 5]
         if hold:
-            print("\n  teams you hold that much of the field has spent:")
-            for t, n in hold:
-                print(f"    {t:<5}{n:>4} entrants ({100*n/n_ent:.0f}%)")
+            print("  you hold: " + "  ".join(f"{t} {n}" for t, n in hold))
 
 
 def main():

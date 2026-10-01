@@ -1,78 +1,90 @@
-# RUN GUIDE
+# NFL Survivor 2026 — Run Guide
 
-Windows / PowerShell. All scripts import each other by name — keep them flat in one directory.
+200 entrants · $5,000 · 23 picks · 3 strikes · 10 divisions of 20
 
+Windows / PowerShell. Keep all files flat in one directory — they import each other by name.
 Repo: `github.com/ishaandesai0/survivor-pool` (private)
 
-Call `.venv\Scripts\python.exe` explicitly. `activate` does not reliably rebind `python` here.
+```powershell
+cd C:\Users\ishaa\survivor_pool
+.venv\Scripts\activate       # prompt must show (.venv)
+```
+
+Without `(.venv)` you're on base Python with a different package set.
+
+---
 
 ## Weekly routine
 
-```powershell
-.venv\Scripts\python.exe state.py
-```
-
-Reads `picks.csv`, derives `--used`/`--strikes`, prints the week's commands. **Override its `--posted-through` guess** — see Fitted parameters below.
-
-After the sheet arrives:
+**Tuesday** — refit on the new results, get the week's candidates:
 
 ```powershell
-# paste the results PDF text into sheets\weekN.txt
-.venv\Scripts\python.exe field.py parse sheets\weekN.txt --week N
-.venv\Scripts\python.exe field.py report --me "Ishaan"
+python ridge_cv.py --season 2026 --week N          # every few weeks
+python pipeline.py --train 2007 2025 --season 2026 --week N
+python weekly.py --week N --used ... --strikes n --grid win_probs_model.csv --objective depth
+python weekly_robust.py --week N --used ... --strikes n --grid win_probs_model.csv --draws 200 --posted-through P
+python division_opt.py --week N
 ```
 
-Then log the pick and commit:
+**Thursday, Friday, Saturday** — check for staleness before submitting:
+
+```powershell
+python prekick.py --week N --used ... --strikes n
+```
+
+Week 3 showed the cost of skipping these: a QB designation appeared Thursday and cleared Friday, unseen.
+
+**After the sheet posts:**
+
+```powershell
+python field.py parse sheets\weekN_sheet.txt --week N
+python field.py report --me "Ishaan"
+python prize_live.py --me "Ishaan" --week N --sims 1500
+```
+
+**Then log and commit:**
 
 ```powershell
 # picks.csv: week,team,result,notes   (double weeks = two rows, same week)
-git add picks.csv win_probs_model.csv results_2026.csv sheets
+git add picks.csv win_probs_model.csv results_2026.csv sheets division_roster.csv
 git commit -m "Week N: TEAM (W/L). n strikes."
 git push
 ```
 
-Never type `--used` by hand. `state.py` catches `LA` for `LAR`, duplicate teams, too many picks in a week, and infeasible paths.
+`state.py` prints the week's commands with flags derived from `picks.csv` — never type `--used` by hand.
+
+---
 
 ## Files
 
-**Weekly**
-| file | what it does |
-|---|---|
-| `state.py` | pool state from `picks.csv`; emits the week's commands |
-| `pipeline.py` | pulls nflverse, builds `win_probs_model.csv` |
-| `weekly.py` | ranks this week's picks (`--objective survive\|depth`) |
-| `weekly_robust.py` | ranks them under grid noise — **prefer this** |
-| `field.py` | parses the pool sheet into `field_state.csv` |
+**Weekly** · `state.py` (pool state → commands) · `pipeline.py` (builds the grid) · `weekly.py` (ranks picks) · `weekly_robust.py` (ranks under grid noise — **prefer this**) · `prekick.py` (line movement + injuries) · `field.py` (parses the pool sheet) · `division_opt.py` (optimises for the $150 division prize)
 
-**Analysis**
-| file | what it does |
-|---|---|
-| `stability.py` | which future picks are information vs placeholder |
-| `ridge_cv.py` | cross-validates `--ridge` |
-| `fit_decay.py` | fits `--base` and `--decay` |
-| `prize23.py` | expected dollars (assumes 0 strikes — see Known issues) |
-| `tie_analysis.py` | how 1st place resolves (same caveat) |
-| `slots_model.py` / `strikes_path.py` | 23-pick path optimisers |
-| `qc_grid.py` | validates a grid, recovers matchups from probability complements |
+**Periodic** · `ridge_cv.py` (cross-validates `--ridge`) · `fit_decay.py` (fits `--base`/`--decay`) · `stability.py` (which future picks are information vs placeholder) · `prize_live.py` (expected dollars from real field state) · `qc_grid.py` (validates a grid, recovers matchups)
 
-**Model internals**: `market.py` · `ratings.py` · `residual.py` · `demo.py` · `smoke_test.py`
+**Checks** · `selfcheck.py` (files intact?) · `smoke_test.py` (everything runs?) · `demo.py` (numbers right?) · `deps.py` (import graph)
 
-**Data**: `win_probs_model.csv` (current grid, committed weekly as an audit trail) · `win_probs_2026.csv` (screenshot transcription, fallback/fixture only) · `picks.csv` · `results_2026.csv` · `sheets/` · `field_state.csv` (gitignored, regenerable)
+**Libraries** · `market.py` · `ratings.py` · `residual.py` · `slots_model.py` · `survivor.py`
+
+**Data** · `win_probs_model.csv` (live grid, committed weekly as an audit trail) · `picks.csv` · `results_2026.csv` · `division_roster.csv` · `sheets/` · `win_probs_2026.csv` (screenshot transcription — smoke-test fixture only) · `field_state.csv` (gitignored, regenerable)
+
+---
 
 ## Fitted parameters
 
-Measured, not guessed.
+All measured, none guessed.
 
 | param | value | source | re-fit |
 |---|---|---|---|
 | `--base` | 3.717 | `fit_decay.py` | rarely |
 | `--decay` | 0.355 | `fit_decay.py` | rarely |
-| `--ridge` | 0.5 | `ridge_cv.py` (historical arm) | every few weeks — falls as lines accumulate |
+| `--ridge` | 0.5 | `ridge_cv.py`, historical arm | every few weeks |
 | `sigma0` | 11.16 | MLE in `market.py` | automatic |
-| HFA | 1.83 | fitted in `ratings.py` | automatic |
-| `--posted-through` | **2** | = last week with posted lines | **check every week** |
+| HFA | ~1.4 | fitted in `ratings.py` | automatic |
+| `--posted-through` | = last week with posted lines | pipeline output | **check weekly** |
 
-`--posted-through` is the trap. nflverse carried lookahead lines through Week 16 preseason, then swapped to current-week-only at kickoff — 112 posted games became 45. Read `games from posted lines` in the pipeline output and set it to the last week actually covered. Too high and `stability.py` / `weekly_robust.py` skip perturbing weeks that are really projections, making those picks look far more certain than they are.
+`--posted-through` is the trap. nflverse carried lookahead lines through Week 16 preseason, then switched to current-week-only at kickoff. Read `sources: posted N` from the pipeline and set it to the last week actually covered. Too high and `stability.py`/`weekly_robust.py` skip perturbing weeks that are really projections.
+
+---
 
 ## Setup
 
@@ -81,58 +93,35 @@ Use **python.org** Python, not the Microsoft Store build — the Store version g
 ```powershell
 py -3.14 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe selfcheck.py
 .venv\Scripts\python.exe smoke_test.py
 .venv\Scripts\python.exe demo.py
 ```
 
-Smoke test checks that nothing crashes. `demo.py` checks the numbers, which is the part that matters after a library upgrade:
+`demo.py` must show: efficient market → t ≈ −1.4 (finds nothing); planted 5.5pt QB edge → t ≈ +4.4 (finds it); ratings from spreads → r ≈ 0.9996, MAE ≈ 0.17. **If any fail, stop.**
 
-- A. efficient market → t ≈ −1.4, finds nothing
-- B. planted 5.5pt QB edge → t ≈ +4.4, finds it
-- C. ratings from spreads → r ≈ 0.9996, MAE ≈ 0.17
-
-**If any fail, stop.**
-
-## Full chain
-
-```powershell
-.venv\Scripts\python.exe smoke_test.py
-.venv\Scripts\python.exe demo.py
-.venv\Scripts\python.exe ridge_cv.py --season 2026 --week N
-.venv\Scripts\python.exe pipeline.py --train 2007 2025 --season 2026 --week N --base 3.717 --decay 0.355 --ridge 0.5
-.venv\Scripts\python.exe weekly.py --week N --used ... --strikes n --grid win_probs_model.csv --objective depth
-.venv\Scripts\python.exe weekly_robust.py --week N --used ... --strikes n --grid win_probs_model.csv --draws 200 --posted-through P
-```
-
-Pipeline health check: sigma ~11.16, residual t near 0, ratings sd 2.5–5.0 with no compression warning, HFA 1.6–2.0, no week-sum warnings.
-
-Grid validation (`qc_grid.py` only reads `win_probs_2026.csv`, so do this instead):
-
-```powershell
-.venv\Scripts\python.exe -c "import pandas as pd; d=pd.read_csv('win_probs_model.csv').set_index('team'); d.columns=[int(c) for c in d.columns]; print('teams', len(d)); [print(f'  W{w}: {d[w].sum():.1f} vs {100*(d[w].notna().sum()//2)}') for w in range(1,19)]"
-```
-
-Every week must match exactly (1600 / 1500 / 1400 / 1300 by bye count).
+---
 
 ## Known issues
 
-- **`mm.report()` calibration is in-sample.** The ±0.000 reliability column is isotonic regression scored on its own training data. Meaningless as printed. Needs a train/test split; doesn't affect picks.
-- **`prize23.py` and `tie_analysis.py` assume 0 strikes and 23 picks.** Their EV and equity numbers describe a clean entrant, not your actual position. Use `weekly.py` for that.
-- **`state.py` guesses `--posted-through` as week+5.** Wrong since the lookahead lines disappeared. Override it.
-- **`qc_grid.py` hardcodes `win_probs_2026.csv`.** No `--grid` flag.
-- **`fit_decay.py` only measured to d=14**, thin at the edge (80 samples vs ~160). Week 17–18 extrapolation is the softest part of the model.
-- **`win_probs_2026.csv`** is a hand transcription with ±5pt noise in Weeks 6–18 and some wrong recovered matchups. Fixture only.
+- **`mm.report()` reliability is in-sample.** The ±0.000 column is isotonic regression scored on its own training data. Hidden behind `--verbose`. Needs a train/test split; doesn't affect picks.
+- **`field.py` reads the sheet's X column as state *entering* that week**, including any Thursday game already played. `picks.csv` is authoritative for your own count.
+- **`fit_decay.py` only measured to d=14**, thin at the edge. Week 17–18 extrapolation is the softest part of the model.
+- **The field popularity model does not fit.** It predicted SF as the Week 2 modal pick; the field took TB 88–57. Treat `prize_live` EV as indicative, ordering as meaningful.
+- **`survivor.py` is the obsolete 18-pick model** but `slots_model.py` still imports `solve_path` from it, and `stability.py` imports `slots_model`. Live dependency; untangling is refactoring, not cleanup.
+
+---
 
 ## Troubleshooting
 
-**`No Python at '...WindowsApps...'`** — Store Python updated or removed; `.venv` points at a dead path. `py -0p`, then rebuild.
+**`No Python at '...WindowsApps...'`** — Store Python updated or removed; `.venv` points at a dead path. `py -0p`, rebuild the venv.
 
 **`ModuleNotFoundError: pyarrow`** — `nflreadpy` returns polars; `.to_pandas()` needs it.
 
 **`No feasible path remains`** — `--used` leaves fewer teams than slots. `state.py --check`.
 
-**`No posted lines yet`** — books haven't hung the week. Seed from win totals via `prior_from_win_totals()`.
+**Entrant count ≠ 200 in `field.py`** — names fragmenting across weeks. It prints the offenders.
+
+**`The '<' operator is reserved`** — you pasted a `<placeholder>`. Substitute a real value.
 
 **`git status` shows `__pycache__`** — `.gitignore` only affects untracked files. `git rm -r --cached __pycache__`.
-
-**PowerShell `The '<' operator is reserved`** — you pasted a `<placeholder>`. Substitute a real value.

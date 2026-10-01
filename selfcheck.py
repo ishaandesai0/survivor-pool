@@ -3,12 +3,16 @@ Static checks — no network, no simulation, ~2 seconds.
 
 Exists because the equivalent checks as PowerShell one-liners are a quoting
 minefield: nested quotes and backslash escapes get mangled by the shell
-before Python ever sees them. A file has no such problem.
+before Python ever sees them.
 
 Run this before committing. It verifies the files are intact and internally
 consistent, which is different from smoke_test.py (does everything RUN?)
-and demo.py (are the NUMBERS right?). All three answer different questions;
-run all three.
+and demo.py (are the NUMBERS right?). All three answer different questions.
+
+Checks look for CODE TOKENS, not printed strings. An earlier version tested
+for the text "ratings spread" and failed the moment the output was trimmed,
+while the feature itself still worked. Printed text is cosmetic and drifts;
+code tokens do not.
 
     python selfcheck.py
 """
@@ -20,22 +24,19 @@ import sys
 FILES = [
     "state.py", "pipeline.py", "field.py", "ridge_cv.py", "smoke_test.py",
     "weekly.py", "weekly_robust.py", "stability.py", "ratings.py",
-    "market.py", "residual.py", "prize23.py", "tie_analysis.py",
-    "slots_model.py", "qc_grid.py", "survivor.py", "strikes_path.py",
-    "fit_decay.py", "demo.py", "selfcheck.py", "prekick.py",
-    "prize_live.py", "division_opt.py",
+    "market.py", "residual.py", "slots_model.py", "qc_grid.py",
+    "survivor.py", "fit_decay.py", "demo.py", "selfcheck.py", "prekick.py",
+    "prize_live.py", "division_opt.py", "deps.py",
 ]
 
-# The validated parameters. Any drift between these and what the code
-# actually defaults to is exactly the failure that silently rebuilt a
-# compressed grid, so it gets an explicit check rather than a comment.
 EXPECT = {"base": 3.717, "decay": 0.355, "ridge": 0.5}
 
 fails = []
 
 
 def ok(label, passed, detail=""):
-    print(f"  [{'OK  ' if passed else 'FAIL'}] {label}{'  ' + detail if detail else ''}")
+    print(f"  [{'OK  ' if passed else 'FAIL'}] {label}"
+          f"{'  ' + detail if detail else ''}")
     if not passed:
         fails.append(label)
 
@@ -100,17 +101,27 @@ mk = srcs.get("market.py", "")
 ok("devig present", "def devig" in mk)
 ok("moneyline -100 safe", "out[neg]" in mk)
 
+print("\nfield.py parses the strike column as a COUNT:")
+fd = srcs.get("field.py", "")
+ok("multi-X handled", "split_marks" in fd)
+ok("names canonicalised", "def canon" in fd)
+ok("no single-X regex", r"(\bX\s*)?" not in fd)
+
+print("\nweekly.py plan follows the recommendation:")
+wk = srcs.get("weekly.py", "")
+ok("recommendation forced into plan", "forced=forced" in wk
+   or "rec.split" in wk)
+
 print("\ndata files:")
 for f, need in [("picks.csv", "week,team,result"),
                 ("win_probs_model.csv", "team,1,2"),
                 ("results_2026.csv", "week,away"),
+                ("division_roster.csv", "name,wk1"),
                 ("requirements.txt", "nflreadpy")]:
     if not os.path.exists(f):
         ok(f, False, "MISSING")
         continue
     body = open(f, encoding="utf-8").read()
-    # search the whole file, not just line 1 -- requirements.txt lists
-    # nflreadpy on line 7, which the old first-line check failed on
     hit = need in body if f == "requirements.txt" else \
         body.lstrip().startswith(need)
     ok(f, hit, "" if hit else f"looking for {need!r}")
@@ -121,17 +132,14 @@ try:
     d = pd.read_csv("win_probs_model.csv").set_index("team")
     d.columns = [int(c) for c in d.columns]
     ok("32 teams", len(d) == 32, f"got {len(d)}")
-    bad = []
-    for w in range(1, 19):
-        n = int(d[w].notna().sum() // 2)
-        if abs(d[w].sum() - 100 * n) > 0.5:
-            bad.append(w)
+    bad = [w for w in range(1, 19)
+           if abs(d[w].sum() - 100 * int(d[w].notna().sum() // 2)) > 0.5]
     ok("every week sums to 100 x games", not bad, f"bad: {bad}" if bad else "")
     byes = {w: int(d[w].isna().sum()) for w in range(1, 19)}
-    expect_byes = {5: 2, 6: 4, 7: 4, 8: 4, 9: 2, 10: 4, 11: 6, 13: 4, 14: 2}
+    expect = {5: 2, 6: 4, 7: 4, 8: 4, 9: 2, 10: 4, 11: 6, 13: 4, 14: 2}
     got = {w: b for w, b in byes.items() if b}
-    ok("bye weeks match 2026 schedule", got == expect_byes,
-       "" if got == expect_byes else f"got {got}")
+    ok("bye weeks match 2026 schedule", got == expect,
+       "" if got == expect else f"got {got}")
 except Exception as e:
     ok("grid checks", False, str(e)[:60])
 
