@@ -5,18 +5,18 @@ survivor pool. Probabilities are derived from market prices rather than a
 hand-built power rating, and the pick sequence is solved exactly rather than
 greedily.
 
-Operational details are in [RUN\_GUIDE.md](RUN_GUIDE.md).
+Operational details are in [RUN_GUIDE.md](RUN_GUIDE.md).
 
 ## The pool
 
-|||
-|-|-|
-|Entrants|200|
-|Prize pool|$5,000 — $1500/800/600/400/200 overall, plus $150 per division|
-|Divisions|10 of 20, random assignment|
-|Picks|**23**, not 18 — weeks 5, 7, 10, 12 and 15 require two teams|
-|Strikes|3 and you're out|
-|Reuse|each team once per season|
+|            |                                                                |
+| ---------- | -------------------------------------------------------------- |
+| Entrants   | 200                                                            |
+| Prize pool | $5,000 — $1500/800/600/400/200 overall, plus $150 per division |
+| Divisions  | 10 of 20, random assignment                                    |
+| Picks      | **23**, not 18 — weeks 5, 7, 10, 12 and 15 require two teams   |
+| Strikes    | 3 and you're out                                               |
+| Reuse      | each team once per season                                      |
 
 The 23-pick rule is the whole difficulty. Expected strikes on the
 mathematically optimal path is **5.31**, so P(finishing with ≤2) is about
@@ -28,77 +28,21 @@ rather than who finished.
 ## Architecture
 
 ```mermaid
-
-flowchart TB
-
-&#x20;   NFL\["nflverse<br/>spreads, moneylines, 2007-26"]
-
-&#x20;   SHEET\["pool sheets<br/>200 entrants, weekly"]
-
-
-
-&#x20;   L1\["1. market<br/>de-vig to prob, sigma 11.16"]
-
-&#x20;   L2\["2. ratings<br/>ridge-invert, project 18 wks"]
-
-&#x20;   L3\["3. residual ML<br/>t = +0.12, no edge"]
-
-
-
-&#x20;   G\["32 x 18 grid<br/>win\_probs\_model.csv"]
-
-&#x20;   F\["field state<br/>burned teams, strikes"]
-
-
-
-&#x20;   W\["weekly<br/>Hungarian, 23 slots"]
-
-&#x20;   R\["robust<br/>resampled grids"]
-
-&#x20;   D\["division<br/>20-person race"]
-
-&#x20;   P\["prize\_live<br/>expected dollars"]
-
-&#x20;   PICK\["the pick"]
-
-
-
-&#x20;   NFL --> L1
-
-&#x20;   NFL --> L3
-
-&#x20;   L1 --> L2
-
-&#x20;   L1 --> G
-
-&#x20;   L2 --> G
-
-&#x20;   L3 -.->|shrunk to zero| G
-
-&#x20;   SHEET --> F
-
-
-
-&#x20;   G --> W
-
-&#x20;   G --> R
-
-&#x20;   G --> D
-
-&#x20;   G --> P
-
-&#x20;   F --> D
-
-&#x20;   F --> P
-
-
-
-&#x20;   W --> PICK
-
-&#x20;   R --> PICK
-
-&#x20;   D --> PICK
-
+flowchart TD
+    NFL["nflverse<br/>spreads + moneylines<br/>2007-26"] --> L1["1. market<br/>de-vig to probability<br/>sigma 11.16"]
+    NFL --> L3["3. residual ML<br/>t = +0.12<br/>no edge"]
+    L1 --> L2["2. ratings<br/>ridge-invert spreads<br/>project 18 weeks"]
+    L1 --> G["32 x 18 grid<br/>win_probs_model.csv"]
+    L2 --> G
+    L3 -.-> G
+    SHEET["pool sheets<br/>200 entrants<br/>weekly"] --> F["field state<br/>burned teams<br/>strikes"]
+    G --> W["weekly<br/>Hungarian<br/>23 slots"]
+    G --> R["robust<br/>resampled grids"]
+    G --> D["division<br/>20-person race"]
+    F --> D
+    W --> PICK["the pick"]
+    R --> PICK
+    D --> PICK
 ```
 
 The dashed edge is the honest part: layer 3 exists, was measured, and
@@ -128,13 +72,13 @@ survival probability with no better information.
 
 ## Every parameter is measured
 
-|param|value|how|
-|-|-|-|
-|σ (spread → probability)|11.16|MLE on 2007–2025|
-|σ floor (projection)|3.717|fitted on 11 seasons|
-|σ growth per week ahead|0.355|same|
-|ridge penalty|0.5|k-fold CV at matched sample size|
-|home-field advantage|\~1.4|fitted per refit|
+| param                    | value | how                              |
+| ------------------------ | ----- | -------------------------------- |
+| σ (spread → probability) | 11.16 | MLE on 2007–2025                 |
+| σ floor (projection)     | 3.717 | fitted on 11 seasons             |
+| σ growth per week ahead  | 0.355 | same                             |
+| ridge penalty            | 0.5   | k-fold CV at matched sample size |
+| home-field advantage     | \~1.4 | fitted per refit                 |
 
 Two of these started as guesses and the data overruled both. The σ-growth
 term was originally 3× too aggressive, which collapsed every distant game
@@ -148,11 +92,11 @@ underestimated the near term and overestimated the far end.
 real data a null result is ambiguous between "the market is efficient" and
 "my code is broken":
 
-|scenario|expected|result|
-|-|-|-|
-|Efficient market|find nothing|t = −1.38 ✓|
-|Backup QB worth 5.5 pts, unpriced|find it|t = +4.42 ✓|
-|Recover ratings from spreads only|recover them|r = 0.9996, MAE 0.17 pts ✓|
+| scenario                          | expected     | result                     |
+| --------------------------------- | ------------ | -------------------------- |
+| Efficient market                  | find nothing | t = −1.38 ✓                |
+| Backup QB worth 5.5 pts, unpriced | find it      | t = +4.42 ✓                |
+| Recover ratings from spreads only | recover them | r = 0.9996, MAE 0.17 pts ✓ |
 
 **This harness earned its keep immediately.** The first version judged edges
 by R² and failed scenario B — calling a real, planted, money-making
@@ -199,4 +143,3 @@ The picks themselves have never been close — every week the recommendation
 has come in at 0.0% cost with the point-estimate and robust methods
 agreeing. The tooling has mostly been confirming decisions rather than
 making them, which is itself worth knowing.
-
