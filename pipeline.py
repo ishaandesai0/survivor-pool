@@ -82,6 +82,8 @@ def main():
                          "with 45 posted lines instead of 112, a high value "
                          "compresses the ratings and flattens every projected "
                          "game toward a coin flip.")
+    ap.add_argument("--verbose", action="store_true",
+                    help="show the full market/residual reports")
     ap.add_argument("--out", default="win_probs_model.csv")
     args = ap.parse_args()
 
@@ -92,11 +94,21 @@ def main():
     # ---- layer 1: market baseline ------------------------------------
     tr = to_team_rows(hist)
     mm = MarketModel().fit(tr.spread, tr.won)
-    mm.report(tr.spread, tr.won, "MARKET BASELINE (the bar to beat)")
+    if args.verbose:
+        mm.report(tr.spread, tr.won, "MARKET BASELINE (the bar to beat)")
+    else:
+        from market import log_loss as _ll, ece as _ece
+        _p = mm.predict(tr.spread)
+        print(f"market: sigma {mm.sigma:.2f}  logloss {_ll(tr.won, _p):.4f}"
+              f"  (reliability table is in-sample; --verbose to show)")
 
     # ---- layer 3: does anything beat it? -----------------------------
     rm = ResidualModel(kind="gbm").fit(hist)
-    rm.report()
+    if args.verbose:
+        rm.report()
+    else:
+        print(f"residual: t={rm.t_stat:+.2f} shrink={rm.shrink:.3f}"
+              f"  ({'no edge' if rm.t_stat < 2 else 'EDGE'})")
 
     # ---- layer 2: ratings -> full-season projection -------------------
     cur = load_schedules([args.season])
@@ -112,9 +124,9 @@ def main():
     wts = np.exp(-0.15 * (args.week - priced.week.clip(upper=args.week)))
     pr = PowerRatings(teams, ridge=args.ridge).fit(priced, weights=wts)
     tbl = pr.table()
-    print("\nMARKET-IMPLIED POWER RATINGS")
-    print(tbl.head(10).to_string(index=False))
-    print(f"fitted HFA: {pr.hfa:.2f} pts")
+    print("\nratings: " + "  ".join(
+        f"{r.team} {r.rating:.2f}" for r in tbl.head(8).itertuples()))
+    print(f"HFA {pr.hfa:.2f}", end="")
 
     # Spread diagnostic: compressed ratings are the signature of the ridge
     # penalty dominating a thin set of posted lines. A healthy mid-season
@@ -122,18 +134,14 @@ def main():
     # around 12-18 pts. Much tighter than that and every projected game is
     # being pulled toward a coin flip by the prior, not by the market.
     rv = tbl["rating"].values
-    print(f"\nratings spread: sd {rv.std():.2f} pts   "
-          f"best {rv.max():+.2f}   worst {rv.min():+.2f}   "
-          f"range {rv.max()-rv.min():.2f}")
-    print(f"  (priced games in fit: {len(priced)} of {len(cur)}; "
-          f"ridge={args.ridge})")
+    print(f"  sd {rv.std():.2f}  range {rv.max()-rv.min():.2f}"
+          f"  priced {len(priced)}/{len(cur)}  ridge {args.ridge}")
     if rv.std() < 2.0:
         print("  WARNING: ratings look compressed. Try a lower --ridge.")
 
     proj = pr.project(cur, current_week=args.week, sigma0=mm.sigma,
                       base=args.base, decay=args.decay)
-    print(f"\n  games from posted lines : {(proj.source=='posted').sum()}")
-    print(f"  games from ratings      : {(proj.source=='projected').sum()}")
+    _np_, _pr_ = (proj.source == 'posted').sum(), (proj.source == 'projected').sum()
 
     # ---- prefer DE-VIGGED MONEYLINES over probit-on-spread ------------
     # The moneyline IS the market's win probability. Converting a spread
@@ -159,7 +167,7 @@ def main():
             proj.at[i, "away_wp"] = float(pa)
             proj.at[i, "source"] = "moneyline"
             ml_used += 1
-    print(f"  games from de-vig ML    : {ml_used}")
+    print(f"sources: posted {_np_}  projected {_pr_}  de-vig ML {ml_used}")
 
     # residual adjustment where features exist
     adj = rm.predict_margin_adjustment(cur)

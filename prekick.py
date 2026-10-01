@@ -160,9 +160,8 @@ def main():
     used = [t.strip().upper() for t in args.used.split(",") if t.strip()]
     grid = load_grid(args.grid)
 
-    print("=" * 70)
-    print(f"PRE-KICKOFF CHECK — week {args.week}")
-    print("=" * 70)
+    print(f"PREKICK wk{args.week} — used {','.join(used) or 'none'}, "
+          f"{args.strikes} strike(s)")
 
     # ---- 1. has the market moved since the grid was built? -----------
     games, fresh = fresh_week_probs(args.week, args.season)
@@ -179,34 +178,34 @@ def main():
     mv = pd.DataFrame(rows).sort_values("move", key=abs, ascending=False)
 
     big = mv[mv.move.abs() >= args.move_threshold]
-    print(f"\nLINE MOVEMENT since the grid was built "
-          f"(threshold {args.move_threshold:.1f} pts)")
-    print("-" * 52)
+    print(f"\nMOVEMENT >={args.move_threshold:.0f}pt")
     if big.empty:
-        print("  Nothing moved materially. Grid is still current.")
+        print("  none — grid current")
     else:
-        print(f"  {'team':<6}{'grid':>7}{'now':>7}{'move':>8}")
-        for _, r in big.iterrows():
-            flag = "  <-- CHECK" if abs(r.move) >= 4 else ""
-            print(f"  {r.team:<6}{r.grid:>6.1f}%{r['now']:>6.1f}%"
-                  f"{r.move:>+7.1f}{flag}")
-        print("\n  A move this size means the grid predates news the market")
-        print("  has already priced. Re-run pipeline.py before deciding.")
+        # only the side that moved UP is informative; the complement is
+        # mechanical, so collapse each game to one line
+        seen = set()
+        for _, r in big.sort_values("move", key=abs, ascending=False).iterrows():
+            if r.team in seen:
+                continue
+            seen.add(r.team)
+            flag = " *" if abs(r.move) >= 4 else ""
+            print(f"  {r.team:<5}{r.grid:>6.1f} -> {r['now']:<6.1f}"
+                  f"{r.move:>+6.1f}{flag}")
+        print("  -> rebuild pipeline before deciding")
 
     # ---- 2. what does the fresh market say the pick is? ---------------
     avail = {t: p for t, p in fresh.items() if t not in used}
     rank = sorted(avail.items(), key=lambda x: -x[1])[:args.top]
-    print(f"\nTHIS WEEK ON FRESH PRICES (top {args.top} available)")
-    print("-" * 52)
+    print(f"\nFRESH PRICES (top {args.top})")
     for t, p in rank:
-        old = grid.loc[t, args.week] if t in grid.index else np.nan
-        d = "" if pd.isna(old) else f"   (grid {old:.1f}%, {p-old:+.1f})"
-        print(f"  {t:<6}{p:>6.1f}%{d}")
+        o = grid.loc[t, args.week] if t in grid.index else np.nan
+        d = "" if pd.isna(o) else f"{p-o:>+6.1f}"
+        print(f"  {t:<5}{p:>6.1f}%{d}")
 
     # ---- 3. injury designations on the candidates ---------------------
     cand = [t for t, _ in rank]
-    print(f"\nINJURY REPORT — candidate teams only")
-    print("-" * 52)
+    print(f"\nINJURIES (candidates only)")
     diag = {}
     try:
         inj, sc, pc, ic, nc, diag = injuries(args.week, cand, args.season)
@@ -224,12 +223,9 @@ def main():
         if inj.empty:
             # Say WHY it is empty. Each case needs a different response.
             wk = diag.get("weeks_available")
-            print(f"  no rows after filtering. trail:")
-            print(f"    season rows loaded    : {diag.get('loaded')}")
-            print(f"    weeks in that file    : {wk}")
-            print(f"    rows for week {args.week:<8}: {diag.get('this_week')}")
-            print(f"    after team filter     : {diag.get('after_team_filter')}")
-            print(f"    columns detected      : {diag.get('cols_found')}")
+            print(f"  none. wk{args.week} rows={diag.get('this_week')}, "
+                  f"after team filter={diag.get('after_team_filter')}, "
+                  f"weeks in file={wk}")
             if diag.get("loaded", 0) == 0:
                 print("\n  DIAGNOSIS: nflverse has no 2026 injury file yet.")
                 print("  Use a news source for designations.")
@@ -302,23 +298,8 @@ def main():
                 print("  No designations or practice absences at important")
                 print("  positions for these teams.")
             else:
-                print("\n  DNP/LTD/FULL = practice participation. A blank")
-                print("  status column just means the team has not filed its")
-                print("  final designation yet (Friday for Sunday games).")
-                print("  '(rest)' is a healthy starter being held out -- common")
-                print("  for heavy favourites and not a concern.")
-
-    print("\n" + "=" * 70)
-    print("HOW TO USE THIS")
-    print("=" * 70)
-    print("  Do NOT hand-adjust probabilities for an injury. The price")
-    print("  already moved; subtracting again double-counts it.")
-    print("  DO re-run pipeline.py if anything moved >= 2 pts, then re-run")
-    print("  weekly.py / weekly_robust.py on the refreshed grid.")
-    print("  DO reconsider by hand only when a QB is Out AND the line has")
-    print("  barely moved -- that is the one case suggesting the market has")
-    print("  not finished repricing, and it is rare.")
-    print("=" * 70)
+                print("\n  DNP/LTD/FULL = practice. blank status = not yet"
+                      " filed (Fri). (rest) = healthy.")
 
 
 if __name__ == "__main__":

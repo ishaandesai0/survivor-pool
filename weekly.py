@@ -217,13 +217,21 @@ def main():
     tbl, path, probs, slots, budget, best = evaluate(
         df, args.week, used, args.strikes, args.objective, top=args.top)
 
+    # The plan, alive-curve and protect list must describe the pick we are
+    # actually RECOMMENDING. `path` is the unconstrained Hungarian solution,
+    # which maximises the product of win probabilities -- under
+    # --objective depth that can be a different team, so the output showed
+    # one recommendation above a different team's plan.
+    rec = tbl.iloc[0]["pick"]
+    all_avail = [t for t in df.index if t not in used]
+    forced = {j: t for j, t in enumerate(rec.split("+"))}
+    p2, pr2 = solve(df, slots, all_avail, forced=forced)
+    if p2 is not None:
+        path, probs = p2, pr2
+
     dbl = args.week in DOUBLE_WEEKS
-    print("=" * 72)
-    print(f"WEEK {args.week}{'  (DOUBLE WEEK — two picks)' if dbl else ''}")
-    print(f"strikes {args.strikes}/3   budget: {budget} more loss"
-          f"{'es' if budget != 1 else ''} allowed   "
-          f"{len(used)} teams burned   {len(slots)} picks left")
-    print("=" * 72)
+    print(f"WK{args.week}{' DOUBLE' if dbl else ''} | {args.strikes} strike(s),"
+          f" budget {budget} | {len(used)} burned, {len(slots)} slots left")
 
     if budget == 0:
         print("\n  !! ZERO MARGIN. One more loss ends your season.")
@@ -240,9 +248,9 @@ def main():
         print(f"  {r['pick']:<12}{r['wp']:>5.0f}%{fmt(r['score']):>12}"
               f"{r['cost']:>7.1f}%{star} {r['then']}")
 
-    print(f"\n  RECOMMENDATION: {tbl.iloc[0]['pick']}")
+    print(f"\n  >>> {rec}")
 
-    print("\n  full remaining plan:")
+    print("\n  plan:")
     cur = None; line = []
     for t, w in zip(path, slots):
         line.append(f"{'W'+str(w) if w != cur else '+'}:{t}({df.loc[t,w]:.0f})")
@@ -250,18 +258,15 @@ def main():
     for i in range(0, len(line), 5):
         print("    " + " ".join(line[i:i+5]))
 
-    print(f"\n  P(finish with <=2 strikes from here): {p_survive(probs, budget)*100:.2f}%")
-    print(f"  expected further picks made        : {expected_depth(probs, budget):.1f} of {len(slots)}")
-
-    print("\n  alive at each future pick:")
+    print(f"\n  P(<=2 strikes) {p_survive(probs, budget)*100:.2f}%   "
+          f"E[depth] {expected_depth(probs, budget):.1f}/{len(slots)}")
+    print("\n  alive:")
     ac = alive_curve(probs, budget, slots)
     for w, a in ac[::max(1, len(ac)//8)]:
         print(f"    W{w:<3} {a*100:5.1f}%  {'#'*int(a*40)}")
 
-    print("\n  protect (costliest teams to lose access to):")
-    for t, c in protect_list(df, args.week, used, args.strikes):
-        print(f"    {t:<5} {c:5.1f}%")
-    print()
+    pl = protect_list(df, args.week, used, args.strikes)
+    print("\n  protect: " + "  ".join(f"{t} {c:.0f}%" for t, c in pl))
 
 
 if __name__ == "__main__":

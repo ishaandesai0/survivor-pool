@@ -176,11 +176,7 @@ def main():
           f"{'  (DOUBLE)' if n_this == 2 else ''}   strikes {args.strikes}/3   "
           f"budget {budget}   {args.draws} grids")
     print("=" * 74)
-    print("  point  = P(survive) if the grid is exactly right")
-    print("  robust = E[P(survive)] when the path is chosen under grid noise")
-    print("           and scored on the base grid -- always <= point, and the")
-    print("           gap is what uncertainty actually costs you")
-    print()
+    print("  point = if grid exact | robust = under grid noise, scored on base")
     print(f"  {'pick':<12}{'point':>8}{'robust':>9}{'+/-':>7}{'win%':>7}"
           f"{'rank':>10}")
     print("  " + "-" * 70)

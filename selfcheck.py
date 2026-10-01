@@ -71,7 +71,7 @@ for label, tok in [
     ("LA -> LAR", '"LA": "LAR"'),
     ("base/decay wired to project", "base=args.base"),
     ("ridge wired to PowerRatings", "ridge=args.ridge"),
-    ("ratings spread diagnostic", "ratings spread"),
+    ("ratings spread diagnostic", "rv.std()"),
     ("de-vig moneylines", 'method="shin"'),
     ("moneyline-aware grid emit", 'source == "moneyline"'),
 ]:
