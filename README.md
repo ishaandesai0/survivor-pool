@@ -5,18 +5,18 @@ survivor pool. Probabilities are derived from market prices rather than a
 hand-built power rating, and the pick sequence is solved exactly rather than
 greedily.
 
-Operational details are in [RUN_GUIDE.md](RUN_GUIDE.md).
+Operational details are in [RUN\_GUIDE.md](RUN_GUIDE.md).
 
 ## The pool
 
-| | |
-|---|---|
-| Entrants | 200 |
-| Prize pool | $5,000 — $1500/800/600/400/200 overall, plus $150 per division |
-| Divisions | 10 of 20, random assignment |
-| Picks | **23**, not 18 — weeks 5, 7, 10, 12 and 15 require two teams |
-| Strikes | 3 and you're out |
-| Reuse | each team once per season |
+|||
+|-|-|
+|Entrants|200|
+|Prize pool|$5,000 — $1500/800/600/400/200 overall, plus $150 per division|
+|Divisions|10 of 20, random assignment|
+|Picks|**23**, not 18 — weeks 5, 7, 10, 12 and 15 require two teams|
+|Strikes|3 and you're out|
+|Reuse|each team once per season|
 
 The 23-pick rule is the whole difficulty. Expected strikes on the
 mathematically optimal path is **5.31**, so P(finishing with ≤2) is about
@@ -28,30 +28,77 @@ rather than who finished.
 ## Architecture
 
 ```mermaid
+
 flowchart TB
-    NFL["nflverse<br/><small>spreads, moneylines, 2007–26</small>"]
-    SHEET["pool sheets<br/><small>200 entrants, weekly</small>"]
 
-    NFL --> L1["1 · market<br/><small>de-vig → prob, σ=11.16</small>"]
-    L1 --> L2["2 · ratings<br/><small>ridge-invert, project 18 wks</small>"]
-    NFL --> L3["3 · residual ML<br/><small>t=+0.12 · no edge</small>"]
+&#x20;   NFL\["nflverse<br/>spreads, moneylines, 2007-26"]
 
-    L1 --> G[("32 × 18 grid<br/><small>win_probs_model.csv</small>")]
-    L2 --> G
-    L3 -. "shrunk to ~0" .-> G
+&#x20;   SHEET\["pool sheets<br/>200 entrants, weekly"]
 
-    SHEET --> F["field state<br/><small>burned teams, strikes</small>"]
 
-    G --> W["weekly<br/><small>Hungarian, 23 slots</small>"]
-    G --> R["robust<br/><small>resampled grids</small>"]
-    G --> D["division<br/><small>20-person race</small>"]
-    F --> D
-    F --> P["prize_live<br/><small>expected dollars</small>"]
-    G --> P
 
-    W --> PICK{{"the pick"}}
-    R --> PICK
-    D --> PICK
+&#x20;   L1\["1. market<br/>de-vig to prob, sigma 11.16"]
+
+&#x20;   L2\["2. ratings<br/>ridge-invert, project 18 wks"]
+
+&#x20;   L3\["3. residual ML<br/>t = +0.12, no edge"]
+
+
+
+&#x20;   G\["32 x 18 grid<br/>win\_probs\_model.csv"]
+
+&#x20;   F\["field state<br/>burned teams, strikes"]
+
+
+
+&#x20;   W\["weekly<br/>Hungarian, 23 slots"]
+
+&#x20;   R\["robust<br/>resampled grids"]
+
+&#x20;   D\["division<br/>20-person race"]
+
+&#x20;   P\["prize\_live<br/>expected dollars"]
+
+&#x20;   PICK\["the pick"]
+
+
+
+&#x20;   NFL --> L1
+
+&#x20;   NFL --> L3
+
+&#x20;   L1 --> L2
+
+&#x20;   L1 --> G
+
+&#x20;   L2 --> G
+
+&#x20;   L3 -.->|shrunk to zero| G
+
+&#x20;   SHEET --> F
+
+
+
+&#x20;   G --> W
+
+&#x20;   G --> R
+
+&#x20;   G --> D
+
+&#x20;   G --> P
+
+&#x20;   F --> D
+
+&#x20;   F --> P
+
+
+
+&#x20;   W --> PICK
+
+&#x20;   R --> PICK
+
+&#x20;   D --> PICK
+
 ```
 
 The dashed edge is the honest part: layer 3 exists, was measured, and
@@ -59,7 +106,7 @@ contributes essentially nothing.
 
 **Why market-first.** The closing line aggregates injuries, weather and
 sharp money that no public model sees. So the ML layer does not predict game
-outcomes — it predicts `actual_margin - spread_line`, which by construction
+outcomes — it predicts `actual\_margin - spread\_line`, which by construction
 is only what the line does not already know. If the features carry no signal
 the target is noise and the model correctly learns zero.
 
@@ -81,18 +128,18 @@ survival probability with no better information.
 
 ## Every parameter is measured
 
-| param | value | how |
-|---|---|---|
-| σ (spread → probability) | 11.16 | MLE on 2007–2025 |
-| σ floor (projection) | 3.717 | fitted on 11 seasons |
-| σ growth per week ahead | 0.355 | same |
-| ridge penalty | 0.5 | k-fold CV at matched sample size |
-| home-field advantage | ~1.4 | fitted per refit |
+|param|value|how|
+|-|-|-|
+|σ (spread → probability)|11.16|MLE on 2007–2025|
+|σ floor (projection)|3.717|fitted on 11 seasons|
+|σ growth per week ahead|0.355|same|
+|ridge penalty|0.5|k-fold CV at matched sample size|
+|home-field advantage|\~1.4|fitted per refit|
 
 Two of these started as guesses and the data overruled both. The σ-growth
 term was originally 3× too aggressive, which collapsed every distant game
 toward a coin flip. And the projection-error model needed an **intercept** —
-there is ~3.7 points of error even one week out, so a line through the origin
+there is \~3.7 points of error even one week out, so a line through the origin
 underestimated the near term and overestimated the far end.
 
 ## Validation
@@ -101,11 +148,11 @@ underestimated the near term and overestimated the far end.
 real data a null result is ambiguous between "the market is efficient" and
 "my code is broken":
 
-| scenario | expected | result |
-|---|---|---|
-| Efficient market | find nothing | t = −1.38 ✓ |
-| Backup QB worth 5.5 pts, unpriced | find it | t = +4.42 ✓ |
-| Recover ratings from spreads only | recover them | r = 0.9996, MAE 0.17 pts ✓ |
+|scenario|expected|result|
+|-|-|-|
+|Efficient market|find nothing|t = −1.38 ✓|
+|Backup QB worth 5.5 pts, unpriced|find it|t = +4.42 ✓|
+|Recover ratings from spreads only|recover them|r = 0.9996, MAE 0.17 pts ✓|
 
 **This harness earned its keep immediately.** The first version judged edges
 by R² and failed scenario B — calling a real, planted, money-making
@@ -115,7 +162,7 @@ statistic for betting-model edges; the detector is now a t-test on the
 shrinkage coefficient.
 
 Three check layers run before anything is trusted: `selfcheck.py` (are the
-files intact and the parameters consistent?), `smoke_test.py` (does
+files intact and the parameters consistent?), `smoke\_test.py` (does
 everything run?), `demo.py` (are the numbers right?).
 
 ## What didn't work
@@ -130,11 +177,11 @@ still predicts the modal pick backwards).
 
 So contrarian reasoning is unavailable: you cannot fade the popular pick when
 you cannot predict what it will be. The expected-dollar figures from
-`prize_live.py` are indicative; the ordering of candidates is meaningful.
+`prize\_live.py` are indicative; the ordering of candidates is meaningful.
 
 **Grid uncertainty is expensive.** Scoring each candidate path on the base
 grid rather than the perturbed one it was optimised against — which removes
-the optimizer's curse, since `E[max] > max[E]` — cuts survival probability
+the optimizer's curse, since `E\[max] > max\[E]` — cuts survival probability
 by roughly 6×. `stability.py` puts the commitment horizon at **two weeks**:
 beyond that, resampling the grid within its own fitted error reshuffles the
 plan entirely.
@@ -152,3 +199,4 @@ The picks themselves have never been close — every week the recommendation
 has come in at 0.0% cost with the point-estimate and robust methods
 agreeing. The tooling has mostly been confirming decisions rather than
 making them, which is itself worth knowing.
+
