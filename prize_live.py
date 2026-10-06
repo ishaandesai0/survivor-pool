@@ -200,7 +200,12 @@ def simulate(grid, entrants, me_idx, week, params, n_sims, seed=0,
         used = base_used.copy()
         st = base_str.copy()
         alive = st < 3
-        depth = np.full(N, S, int)
+        # Entrants who arrive ALREADY eliminated never enter the pick loop,
+        # so their depth stays at its initial value. Initialising to S (the
+        # full slate) made the ranking key -depth*100 + st treat them as
+        # having survived every slot -- dead players sorted to the TOP and
+        # collected prize money. Depth 0 puts them last, where they belong.
+        depth = np.where(alive, S, 0).astype(int)
 
         for j in range(S):
             ok = np.isfinite(P[:, j])
@@ -369,7 +374,16 @@ def main():
     latest = int(field.week.max())
     last = field[field.week == latest].set_index("name")
     ents = []
+    dropped = 0
     for nm, g in field.groupby("name"):
+        # Eliminated entrants are REMOVED from later sheets. `.get(nm, 0)`
+        # therefore reads them as CLEAN -- the 12 people already out would be
+        # simulated as zero-strike rivals with a full roster of teams,
+        # inflating the field and understating your EV. Absence from the
+        # latest sheet means eliminated, not fresh.
+        if nm not in last.index:
+            dropped += 1
+            continue
         base = int(last.strike.get(nm, 0))
         extra = 0
         if args.results:
@@ -388,7 +402,9 @@ def main():
         sys.exit(f"'{args.me}' not found in {args.state}")
     me = me[0]
     dist = pd.Series([e["strikes"] for e in ents]).value_counts().sort_index()
-    print(f"\nFIELD STATE — {len(ents)} entrants")
+    print(f"\nFIELD STATE — {len(ents)} entrants"
+          + (f" ({dropped} eliminated, dropped from the sheet)"
+             if dropped else ""))
     print("-" * 52)
     for k, v in dist.items():
         lab = f"{k} strikes" if k < 3 else "3+ out"
@@ -408,8 +424,14 @@ def main():
     print("YOUR EXPECTED VALUE FROM HERE")
     print("=" * 68)
     print(f"  EV                     : ${r['ev']:.2f}")
-    print(f"  fair share (1 of {len(ents)}) : ${5000/len(ents):.2f}")
-    print(f"  edge                   : {r['ev']/(5000/len(ents)):.2f}x")
+    # The prize pool is fixed at $5,000 regardless of how many are left,
+    # so fair share is measured against everyone who ENTERED, not against
+    # the survivors. Dividing by the shrinking field would make your edge
+    # look worse every week for no reason.
+    n_entered = len(ents) + dropped
+    fair = 5000 / n_entered
+    print(f"  fair share (1 of {n_entered} entered) : ${fair:.2f}")
+    print(f"  edge                   : {r['ev']/fair:.2f}x")
     print(f"  finish with <=2 strikes: {r['survive']:.1f}%")
     print(f"  cash a top-5 place     : {r['top5']:.1f}%")
     print(f"  win your division      : {r['div']:.1f}%")
@@ -417,6 +439,8 @@ def main():
 
     if args.audit:
         POT = sum(OVERALL) + DIV_PRIZE * N_DIV
+        print(f"  (field {len(ents)} alive of {n_entered} entered; "
+              f"pot is fixed at ${POT:,})")
         tot = r["sim_totals"]
         ev = r["all_ev"]
         print("\n" + "=" * 68)
@@ -451,6 +475,11 @@ def main():
             mark = "  <-- you" if k == r["start_strikes"][me] else ""
             print(f"    {k} strikes  n={m.sum():>3}   EV ${v:>7.2f}{mark}")
         print(f"  [{'OK  ' if mono else 'FAIL'}] more strikes -> less money")
+        elim = r["start_strikes"] >= 3
+        if elim.any():
+            v = float(ev[elim].mean())
+            print(f"  [{'OK  ' if abs(v) < 0.01 else 'FAIL'}] "
+                  f"eliminated entrants earn $0   got ${v:.2f}")
 
         print(f"\n  your EV rank: "
               f"{int((ev > ev[me]).sum()) + 1} of {len(ev)}")
