@@ -80,19 +80,64 @@ def split_marks(name, marks):
         name = m.group(1)
 
 
+_TEAMS = re.compile("|".join(map(re.escape, NICK)))
+
+
 def parse_sheet(path, week):
+    """
+    Two sheet formats exist and each breaks the other's parser:
+
+      PICKS   "Name XX Chiefs"                           one team per row,
+              but rows GLUE together in the PDF export:
+              "Kaitlyn Lewis X 49ersKiersten White Lions" is two people.
+
+      RESULTS "Name XX Jaguars Buccaneers Chiefs Ravens" every week so far,
+              one person per row.
+
+    Scanning for the first nickname handles glued rows but returns the WEEK 1
+    pick on a results sheet. Taking the last nickname per line handles results
+    sheets but merges glued rows. Neither errors -- both produce a plausible
+    200-ish rows of wrong data.
+
+    So detect the format first: on a results sheet nearly every line carries
+    the same number of teams (= weeks played). On a picks sheet most lines
+    carry one.
+    """
     txt = open(path, encoding="utf-8").read()
+    counts = [len(_TEAMS.findall(ln)) for ln in txt.splitlines()
+              if ln.strip() and not ln.strip().lower().startswith("name")]
+    counts = [c for c in counts if c]
+    modal = max(set(counts), key=counts.count) if counts else 1
+    results_fmt = modal >= 2 and counts.count(modal) > 0.8 * len(counts)
+
     rows = []
-    for m in _PAT.finditer(txt):
-        name = m.group(1).replace("\n", " ").strip()
-        name, marks = split_marks(name, m.group(2) or "")
-        name = canon(name)
-        if not name:
-            continue
-        rows.append({"week": week, "name": name,
-                     "team": NICK[m.group(3)],
-                     "strike": len(marks)})   # CUMULATIVE entering this week
-    return pd.DataFrame(rows)
+    if results_fmt:
+        for line in txt.splitlines():
+            line = line.strip()
+            if not line or line.lower().startswith("name"):
+                continue
+            hits = list(_TEAMS.finditer(line))
+            if not hits:
+                continue
+            name, marks = split_marks(line[:hits[0].start()].strip(), "")
+            name = canon(name)
+            if name:
+                rows.append({"week": week, "name": name,
+                             "team": NICK[hits[-1].group(0)],
+                             "strike": len(marks)})
+    else:
+        for m in _PAT.finditer(txt):
+            name = m.group(1).replace("\n", " ").strip()
+            name, marks = split_marks(name, m.group(2) or "")
+            name = canon(name)
+            if name:
+                rows.append({"week": week, "name": name,
+                             "team": NICK[m.group(3)],
+                             "strike": len(marks)})
+    df = pd.DataFrame(rows)
+    df.attrs["fmt"] = "results" if results_fmt else "picks"
+    df.attrs["modal"] = modal
+    return df
 
 
 def cmd_parse(args):
@@ -101,7 +146,8 @@ def cmd_parse(args):
     odd = new.groupby("name").size()
     odd = odd[odd != want]
     print(f"wk{args.week}: {len(new)} rows, {new.name.nunique()} entrants, "
-          f"strikes {dict(sorted(Counter(new.strike).items()))}")
+          f"strikes {dict(sorted(Counter(new.strike).items()))} "
+          f"[{new.attrs.get('fmt')} format, {new.attrs.get('modal')} team(s)/row]")
     if len(odd):
         print(f"  WARNING {len(odd)} entrants have != {want} picks: "
               f"{list(odd.index[:6])}")
@@ -113,7 +159,9 @@ def cmd_parse(args):
         out = new
 
     per_week = out.groupby("week").name.nunique()
-    if out.name.nunique() != per_week.max():
+    # a sheet that only ever SHRINKS is eliminations, not name fragmentation
+    shrinking = list(per_week) == sorted(per_week, reverse=True)
+    if out.name.nunique() != per_week.max() and not shrinking:
         seen = {w: set(g.name) for w, g in out.groupby("week")}
         common = set.intersection(*seen.values())
         print(f"  WARNING {out.name.nunique()} distinct names vs "
@@ -140,12 +188,26 @@ def cmd_report(args):
 
     dist = {k: int((st == k).sum()) if k < 3 else int((st >= 3).sum())
             for k in range(4)}
-    print(f"FIELD wk{[int(w) for w in weeks]} | {n_ent} entrants")
+    n_start = int(df.groupby("week").name.nunique().max())
+    gone = n_start - int(df[df.week == latest].name.nunique())
+    print(f"FIELD wk{[int(w) for w in weeks]} | {n_ent} seen, "
+          f"{n_start} at peak, {gone} dropped from the sheet")
     print("  strikes entering wk%d: " % latest + "  ".join(
         f"{k if k < 3 else '3+'}:{v}" for k, v in dist.items()))
 
+    # Eliminated entrants are DROPPED from later sheets (200 -> 193 -> ...),
+    # so a percentage computed against the current sheet drifts upward every
+    # week for reasons unrelated to picks. Report raw counts, and size the
+    # field by the largest week ever seen.
     burn = df.groupby("team")["name"].nunique().sort_values(ascending=False)
-    print("  burned: " + "  ".join(f"{t} {n}" for t, n in burn.head(12).items()))
+    n_start = int(df.groupby("week").name.nunique().max())
+    print(f"  burned (of {n_start} original): " + "  ".join(
+        f"{t} {n}" for t, n in burn.head(12).items()))
+    per_week = df.groupby("week").name.nunique()
+    if per_week.nunique() > 1:
+        print("  sheet size by week: " + "  ".join(
+            f"W{w}:{n}" for w, n in per_week.items())
+            + "   (shrinks as entrants are eliminated)")
 
     print("  popularity:")
     for w in weeks:

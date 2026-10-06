@@ -1,0 +1,196 @@
+     Name         Strikes   Week 1      Week 2       Week 3    Week 4
+
+ Adam Dienhart      X       Jaguars    Buccaneers    Chiefs     Ravens
+Austin Dunwoody     X       Jaguars    Buccaneers    Chiefs     Vikings
+   Bryce Stull      XX      Jaguars    Buccaneers   Panthers     Bears
+  Colton Brown      X        Bears      Chargers     Chiefs     Ravens
+  Ethan Smith       X       Chargers     49ers       Chiefs     Vikings
+Graham Kennedy      X       Chargers     Eagles      Chiefs     Ravens
+  Jack Barron       X       Chargers     Eagles       Lions      Bears
+ Jase Wickham       X       Jaguars      Eagles      Chiefs    Steelers
+  Justin Raney      X        Lions      Panthers    Seahawks    Vikings
+   Kale Morris      XX       Lions     Buccaneers    Chiefs    Steelers
+   Kevin Hock       XX      Chargers   Buccaneers    Chiefs     Vikings
+    Lisa Cook       XX      Chargers     49ers       Saints     Ravens
+  Matthew Mills     X       Steelers   Buccaneers    Chiefs     Vikings
+ Nico Sowinski      XX      Chargers   Buccaneers    Chiefs     Ravens
+   Riley Cook       XX      Chargers   Buccaneers     49ers     Vikings
+  Sam Padrnos               Steelers     Eagles      Chiefs     Vikings
+ T.J. Bogemann      X       Raiders      Eagles     Panthers   Cowboys
+    Zach Butz      XXX      Chargers     49ers      Panthers     Bills
+   Alex Fauber      X        Bears     Buccaneers     Chiefs   Vikings
+ Ben Ashworth       X       Jaguars      49ers      Seahawks   Vikings
+  Chris Scheib              Steelers    Cowboys       Lions    Vikings
+    Drew Fine                Bears       Eagles       Chiefs   Ravens
+  Jack Connors      X       Jaguars    Buccaneers     Chiefs   Vikings
+Jacob Herbstman     X       Jaguars    Buccaneers     49ers    Vikings
+  Jason Powell      X       Jaguars    Buccaneers     Chiefs   Vikings
+  Jess Stevens              Jaguars      49ers        Lions    Packers
+ John Edwards       X        Lions       Bears        49ers    Vikings
+Johnson Koester             Jaguars      Eagles       Chiefs   Vikings
+  Kaitlyn Lewis     X       Raiders    Buccaneers     49ers    Packers
+ Kiersten White             Jaguars      49ers        Lions    Vikings
+Max Abrahamson      XX      Chargers     49ers       Packers   Ravens
+    Mia Cano        XX      Chargers   Buccaneers     Chiefs   Vikings
+   Pete Newton      XX      Raiders    Buccaneers     49ers     Saints
+   Ryan Wiese       XX      Chargers   Buccaneers     49ers    Vikings
+  Shane Lynch       X       Chargers     49ers        Chiefs   Vikings
+ Thomas Gonya       X       Jaguars    Buccaneers     Chiefs   Vikings
+    Tim Porter      X       Chargers     49ers        Chiefs   Vikings
+    Tom Gillis      X       Jaguars    Buccaneers     Chiefs   Vikings
+ Adam Wilfong       X       Jaguars    Buccaneers    Lions     Vikings
+ Bob Rockstroh      X       Chargers     49ers       Lions     Vikings
+   Cassie Fine      X    Jaguars    Buccaneers     49ers    Vikings
+  Clara Powell      X    Chargers      49ers       Chiefs   Ravens
+ Devon Valentine         Steelers     Eagles       Chiefs   Ravens
+ Grant Frankland    X    Chargers      49ers       Lions    Ravens
+   Ish Cornejo            Lions        49ers       Chiefs   Vikings
+ James Gargano           Jaguars       49ers       Chiefs   Ravens
+   Joe Barron       X    Raiders    Buccaneers     Lions    Vikings
+   Josh Rodak       X    Jaguars      Eagles      Packers   Ravens
+     Kelly All      X    Chargers      49ers       Chiefs   Vikings
+    Kyle Frost      X     Bears      Panthers      Chiefs    Bills
+    Luke Avila           Jaguars       49ers       Chiefs   Ravens
+ Michael Mitsch          Jaguars      Eagles       Chiefs   Ravens
+   Nick Hinkle      XX   Chargers      49ers      Packers   Ravens
+ Patrick Hughes     X    Chargers      49ers       Chiefs   Vikings
+    Reid Gillis     X    Jaguars    Buccaneers     Chiefs    Bears
+  Sam Windler       XX   Chargers   Buccaneers    Ravens    Vikings
+ Spencer Smith      XX   Chargers     Eagles     Seahawks   Packers
+ Thomas Ochoa             Lions       Eagles       Giants    Bears
+Brayden Buschman    XX   Steelers   Buccaneers   Panthers    Ravens
+  Brian Hanawalt    X    Jaguars    Buccaneers     49ers     Vikings
+  Chelsey Ochoa     XX   Chargers   Buccaneers     49ers     Vikings
+     Dylan Beck     X    Chargers      49ers       Chiefs    Vikings
+   Jack Schremp     X    Steelers    Panthers      Saints    Ravens
+  Jackson Adams     XX   Chargers   Buccaneers     Chiefs    Vikings
+    Jake Leeper     XX    Bears      Packers      Bengals    Steelers
+   Javen Wright     X    Chargers      49ers       Chiefs    Vikings
+      Jodi Stull    XX   Steelers   Buccaneers     Lions    Cardinals
+   Jordan Turpin    X     Lions     Buccaneers     Chiefs    Vikings
+     Josh Hale           Jaguars       49ers        Bills    Vikings
+   Kevin Shoults    X    Jaguars    Buccaneers     Chiefs   Cowboys
+     Luke Mann      X    Chargers      49ers       Lions     Vikings
+      Mike True     X    Jaguars      Ravens       Chiefs   Seahawks
+      Nic Heck      X    Jaguars     Chargers      Lions     Vikings
+   Olivia Comus     XX   Steelers   Buccaneers   Seahawks    Ravens
+  Ryan Marchand     XX   Chargers   Buccaneers     Chiefs    Vikings
+    Seth Whaley     XX   Chargers   Buccaneers     Lions     Vikings
+     Trent Fine          Jaguars       49ers       Chiefs    Vikings
+    Victor Araujo         Chiefs       49ers       Lions    Cowboys
+Aanchal Sanghvi     XX   Jaguars    Buccaneers   Packers     Vikings
+Alex Mazanowski     X    Chargers     49ers       Chiefs     Ravens
+   Arin Keen             Jaguars      49ers       Lions      Vikings
+Cheyenne Caudill         Jaguars      49ers       Chiefs     Vikings
+  Daniel Comus      XX    Jaguars    Buccaneers   Seahawks   Ravens
+    Emma Fine              Lions       Chiefs       49ers    Ravens
+  Evan Dienhart     XX     Titans      Eagles     Seahawks   Ravens
+   Garret Gray      X    Chargers      49ers        Chiefs   Ravens
+     Isaac Che      X    Seahawks    Buccaneers     49ers    Vikings
+   Jerry Adams      XX   Chargers    Buccaneers      Bills   Vikings
+     Joe Clark      XX   Chargers      49ers      Panthers   Vikings
+  Kobe Burtron            Jaguars      49ers        Lions    Vikings
+    Kyle Kline      X      Lions       49ers       Packers   Ravens
+    Matt Bailey     X     Steelers   Buccaneers     Chiefs   Vikings
+ Mike Wickham       X     Jaguars      49ers       Eagles    Vikings
+     Nate Eder      X     Jaguars    Buccaneers     Chiefs   Vikings
+   Rich Gilman             Lions       Chiefs       49ers    Vikings
+ Savannah Dunn      XX     Lions     Buccaneers   Panthers   Vikings
+ Tim Bogemann             Jaguars      49ers        Chiefs   Ravens
+  Trey Cochran      X    Chargers      49ers        Chiefs   Vikings
+  Aaron Binford     X    Chargers      49ers       Lions     Ravens
+ Amy Dunwoody            Jaguars       49ers       Chiefs    Vikings
+  Austin Taylor     X    Jaguars       Eagles      Saints    Vikings
+   Billy Kinder     X    Steelers    Buccaneers    Chiefs    Vikings
+Brooke Plantenga    X     Bears        Eagles      Chiefs     Bills
+   Clay Hanna       X    Raiders     Buccaneers    Chiefs    Vikings
+   Evan Powell           Jaguars       49ers       Chiefs    Ravens
+   Grace Gillis     XX   Chargers    Buccaneers    Chiefs    Ravens
+  Jarred Porter          Jaguars       49ers       Chiefs    Ravens
+  Jim Barbiere      X    Jaguars     Buccaneers    Chiefs    Ravens
+  Ken Lanham        X     Lions        Eagles     Packers    Vikings
+   Leigh Evans      X    Chargers      49ers       Chiefs    Ravens
+   Marty Cook       X    Raiders     Buccaneers    Lions     Ravens
+   Nick Ortega      X    Jaguars     Buccaneers    Chiefs    Vikings
+   Rick Leibold     X    Steelers     Ravens       Chiefs    Vikings
+  Shawn Martin      X    Chargers      49ers       Chiefs    Vikings
+   Toby Murray      XX   Jaguars     Buccaneers   Bengals     Bears
+    Zach Stitt           Jaguars       Eagles      Lions     Vikings
+   Aaron Balka      X    Chargers      49ers       Lions     Ravens
+  Aaron Steinhart   X    Jaguars     Buccaneers    Chiefs    Vikings
+    AJ Cantrell     XX   Steelers    Buccaneers   Packers     Colts
+   Alex Madvig      X     Lions        49ers      Packers    Ravens
+  Allison Keener    X    Jaguars     Buccaneers    Chiefs    Vikings
+   Austin Gustin          Lions        Eagles      Chiefs     Colts
+Branden Thompson    XX   Jaguars     Buccaneers   Eagles     Vikings
+  Caleb Randolph    X      Jets       Panthers     Saints    Ravens
+     Curtis Barr       X    Jaguars    Buccaneers     Lions    Vikings
+   Gerry Murray        XX   Chargers     Chiefs     Seahawks   Packers
+     Jack Drake        XX   Chargers     49ers        Chiefs    Bills
+    John Davies       XXX    Lions     Buccaneers    Packers    Bills
+   Josh Wilfong        XX    Rams      Buccaneers     49ers    Ravens
+   Kevin Stanton            Jaguars      49ers        Chiefs   Vikings
+  Mark Sammons         X    Jaguars      Chiefs     Seahawks   Vikings
+   Nolan Isaacs             Raiders      49ers        Chiefs    Colts
+   Sam Sheehan         X    Chargers     49ers        Chiefs   Vikings
+  Todd Dunwoody        X    Jaguars    Buccaneers     49ers    Vikings
+    Addie Powell       X    Jaguars      49ers      Seahawks   Ravens
+ Austin Beidelman      X    Jaguars      49ers       Bengals   Vikings
+      Brent Fine       X    Jaguars    Buccaneers     Chiefs   Vikings
+  Cheston Arthur       X    Jaguars    Buccaneers     Chiefs   Vikings
+   Dakota Parker       X    Steelers    Ravens        Lions    Vikings
+  Daniel Freeland      X    Chargers     Eagles       49ers    Vikings
+   Derrick Keener      X    Jaguars    Buccaneers     Chiefs   Ravens
+    Ethan Davies       XX   Jaguars    Buccaneers    Packers   Ravens
+    Grant McCoy        XX   Chargers     49ers      Seahawks   Ravens
+     James Ham         XX    Titans    Buccaneers     Chiefs   Ravens
+    John Morris        X     Rams        Eagles       Lions    Ravens
+   Justin Rogers       XX   Chargers   Buccaneers     Chiefs   Ravens
+  Keith Madderom      XXX    Titans    Buccaneers     49ers    Saints
+    Luke Pfeiffer      X    Jaguars    Buccaneers     49ers    Vikings
+Nate (Drew) McClung         Steelers     49ers        Lions    Vikings
+ Rachel Dunwoody       X    Steelers   Buccaneers     Lions    Vikings
+ Schuyler Cutchin      X    Jaguars    Buccaneers     Chiefs   Ravens
+  Vaughan Smith        X    Jaguars    Buccaneers     49ers    Ravens
+    Willy Boston       X    Jaguars    Buccaneers     49ers    Vikings
+     AJ Buck           X    Steelers    Panthers    Seahawks   Vikings
+ Aryaman Malliwal      XX    Lions     Buccaneers   Seahawks   Ravens
+  Austin Thayer       XXX   Jaguars    Buccaneers    Packers     Bills
+ Chad Dunwoody         X    Jaguars    Buccaneers     Chiefs   Vikings
+  Drew Wickham              Raiders      Eagles       Chiefs   Vikings
+   Geoff Salmon       X     Chargers     49ers        Lions    Vikings
+    Grant Gillis      X     Jaguars    Buccaneers     Chiefs   Ravens
+Hayden Kuxhausen      XX    Chargers   Buccaneers     Chiefs   Ravens
+   Ishaan Desai       X     Chargers     49ers        Chiefs   Ravens
+   Jacob Harper              Bears      Patriots       Bills   Vikings
+  Joel Deininger      X     Jaguars    Buccaneers     Chiefs   Ravens
+John (Jack) Murray    X      Bears      Packers       Chiefs     Bills
+    Keith Kelley      XX    Jaguars    Buccaneers     Chiefs   Steelers
+  Maxx Wickham       XX    Chargers     Eagles      Saints    Cowboys
+ Nathan Mehringer          Jaguars      Eagles      Chiefs     Ravens
+  Ricky McGowen            Jaguars      Eagles      Chiefs     Ravens
+   Robert Porter           Jaguars      49ers       Chiefs     Vikings
+Skyler Springmeyer   XXX    Titans    Buccaneers    Colts      Saints
+    Tony Bisesi       X    Chargers     49ers       Chiefs     Ravens
+     Will Miller      X    Steelers   Buccaneers    Chiefs     Ravens
+   Brady Landis       X    Jaguars    Buccaneers     49ers    Vikings
+  Chris Valentine          Jaguars      Eagles      Chiefs    Ravens
+    John Strohl      X     Steelers     49ers      Seahawks   Vikings
+   Josh O'Brian      XX    Chargers   Buccaneers    Chiefs    Ravens
+    Juan Rivera      X     Cowboys      Eagles      Chiefs    Vikings
+   Justin Rotich     X     Cowboys      49ers       Chiefs    Vikings
+ Katherine Fauber    X      Lions       Chiefs     Seahawks   Vikings
+     Kollyn All            Jaguars      49ers       Chiefs    Ravens
+   Kurt Weinberg     X     Jaguars    Buccaneers     Bills    Vikings
+   Kyle Sullivan     X     Jaguars    Buccaneers    Chiefs    Ravens
+   Lauren Norris     X     Chargers     Eagles      Chiefs    Vikings
+    Matt Murphy      X     Jaguars    Buccaneers    Chiefs    Vikings
+     Mike Stull      XX    Steelers   Buccaneers   Panthers   Ravens
+  Owen Walbaum       X     Jaguars    Buccaneers    Chiefs    Vikings
+   Parker Raney            Steelers     Eagles      Chiefs    Vikings
+   Rob Cochran       X     Jaguars     Ravens        Bills    Vikings
+   Scott Barclay     XX    Jaguars      Bears      Panthers   Ravens
+     Teri Lynch      XX    Chargers   Buccaneers    Chiefs    Vikings
+  Trey McCartney      X    Jaguars    Buccaneers     Bills     Bears
+   Tyler Forquer     X      Lions       Eagles     Seahawks   Ravens
+

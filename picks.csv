@@ -1,5 +1,5 @@
 week,team,result,notes
-1,LAC,L,lost 14-26 to ARI. model 80.4 close 79.1. field: JAX 77 LAC 58; 67/200 struck
-2,SF,W,beat MIA 35-13. model 87.0 devig. field TB 88 SF 57 PHI 29; 100/200 struck (TB lost 19-23 at CLE). standings: 60 clean / 113 at 1 / 27 at 2
-3,KC,W,beat MIA 24-10. model 88.0 devig (peaked 91.3). field KC 95 DET 25 SF 20 SEA 16 GB 15 CAR 9; 36 struck post-TNF. official standings: 41 clean / 107 at 1 / 45 at 2 / 7 out
-4,BAL,,at TEN. model 84.6 devig. depth 8.18 cost 0.0% avg rank 7.57. Jefferson OUT dropped MIN 83.3->80.9 (gap 3.7pp); Lamar cleared Fri after LTD back. BAL both C out (Pocic Gwyn) + Hendrickson
+1,LAC,L,lost 14-26 to ARI. model 80.4 close 79.1. field JAX 77 LAC 58; 67/200 struck
+2,SF,W,beat MIA 35-13. model 87.0 devig. field TB 88 SF 57 PHI 29; 100 struck (TB lost at CLE)
+3,KC,W,beat MIA 24-10. model 88.0 devig. field KC 95 DET 25 SF 20 SEA 16; 36 struck post-TNF. standings 41/107/45 7 out
+4,BAL,W,beat TEN. model 84.6 devig. depth 8.18 cost 0.0%. field MIN 99 BAL 61; 15 struck. standings 37/105/46 12 out of 193
