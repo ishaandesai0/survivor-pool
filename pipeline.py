@@ -9,6 +9,7 @@ so it drops straight into qc_grid.py / weekly.py / weekly_robust.py /
 slots_model.py / prize23.py.
 """
 import argparse
+import os
 import numpy as np
 import pandas as pd
 
@@ -48,6 +49,49 @@ def load_schedules(seasons):
     import nflreadpy as nfl          # replaces the deprecated nfl_data_py
     df = nfl.load_schedules(seasons).to_pandas()
     return normalize_teams(df)
+
+
+def refresh_results(cur, path="results_2026.csv"):
+    """
+    Keep results_2026.csv current from nflverse.
+
+    The model never needed this file -- pipeline.py fits on nflverse
+    directly -- so it silently stopped being updated after week 2 while
+    everything else kept working. calibrate.py then had nothing to grade
+    weeks 3+ against and quietly reported on half the season.
+
+    Rebuilt every run from the authoritative source, so it cannot drift.
+    Hand-written notes on existing rows are preserved.
+    """
+    done = cur[cur.result.notna()].copy()
+    if done.empty:
+        return
+    winner = done.apply(
+        lambda r: r.home_team if r.result > 0
+        else (r.away_team if r.result < 0 else "TIE"), axis=1)
+    fresh = pd.DataFrame({
+        "week": done.week.astype(int),
+        "away": done.away_team, "away_pts": done.away_score,
+        "home": done.home_team, "home_pts": done.home_score,
+        "winner": winner,
+        "date": done.get("gameday", pd.NA),
+        "note": "",
+    }).sort_values(["week", "home"]).reset_index(drop=True)
+
+    if os.path.exists(path):          # carry over any notes already written
+        try:
+            old = pd.read_csv(path)
+            if "note" in old.columns:
+                keyed = {(int(r.week), r.home): r.note for _, r in old.iterrows()
+                         if isinstance(r.note, str) and r.note.strip()}
+                fresh["note"] = [keyed.get((w, h), "")
+                                 for w, h in zip(fresh.week, fresh.home)]
+        except Exception:
+            pass
+
+    fresh.to_csv(path, index=False)
+    print(f"  results_2026.csv: {len(fresh)} games through week "
+          f"{int(fresh.week.max())}")
 
 
 def to_team_rows(games):
@@ -113,6 +157,7 @@ def main():
     # ---- layer 2: ratings -> full-season projection -------------------
     cur = load_schedules([args.season])
     cur = cur[cur.game_type == "REG"]
+    refresh_results(cur)
     teams = sorted(set(cur.home_team) | set(cur.away_team))
 
     priced = cur.dropna(subset=["spread_line"])
@@ -189,6 +234,24 @@ def main():
 
     grid.index.name = "team"
     grid.to_csv(args.out)
+
+    # Record what produced this grid. calibrate.py otherwise has to infer the
+    # week, and four of nine historical commits touched the grid without
+    # naming one -- which silently threw away the real Week 3 and Week 4
+    # forecasts. A date-based fallback covers history; this covers the future.
+    import json
+    meta_path = "grid_meta.json"
+    try:
+        meta = json.load(open(meta_path))
+    except Exception:
+        meta = {}
+    meta[f"week{int(args.week)}"] = {
+        "week": int(args.week), "ridge": float(args.ridge),
+        "base": float(args.base), "decay": float(args.decay),
+        "sigma0": round(float(mm.sigma), 4), "posted": int(len(priced)),
+    }
+    json.dump(meta, open(meta_path, "w"), indent=1)
+    print(f"  (recorded in {meta_path})")
     print(f"\nwrote {args.out}")
 
     # sanity: every week must sum to 100 x games
