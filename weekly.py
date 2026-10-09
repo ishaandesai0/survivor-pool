@@ -44,12 +44,22 @@ def load_grid(path):
     return df
 
 
-def remaining_slots(week, horizon=18):
+def remaining_slots(week, horizon=18, filled=0):
+    """
+    `filled` = how many of THIS week's slots are already spent.
+
+    A double week contributes two slots. If the Thursday pick is already
+    made, only one remains -- but --used only says the team is burned, not
+    that it consumed one of this week's slots. Without this the optimiser
+    offers a PAIR for a week where you have one slot left, and every
+    comparison it prints is between options you cannot both take.
+    """
     slots = []
     for w in range(week, horizon + 1):
-        slots.append(w)
-        if w in DOUBLE_WEEKS:
-            slots.append(w)
+        n = 2 if w in DOUBLE_WEEKS else 1
+        if w == week:
+            n = max(0, n - filled)
+        slots.extend([w] * n)
     return slots
 
 
@@ -133,13 +143,16 @@ def alive_curve(probs, budget, slots):
 
 
 # ----------------------------------------------------------------------
-def evaluate(df, week, used, strikes, objective="survive", horizon=18, top=10):
+def evaluate(df, week, used, strikes, objective="survive", horizon=18,
+             top=10, filled=0):
     budget = 2 - strikes
-    slots = remaining_slots(week, horizon)
+    slots = remaining_slots(week, horizon, filled)
     avail = [t for t in df.index if t not in used and pd.notna(df.loc[t, week])]
     all_avail = [t for t in df.index if t not in used]
 
-    n_this = 2 if week in DOUBLE_WEEKS else 1
+    n_this = max(0, (2 if week in DOUBLE_WEEKS else 1) - filled)
+    if n_this == 0:
+        raise SystemExit(f"week {week} already has all its picks made")
     score = (lambda pr: p_survive(pr, budget)) if objective == "survive" \
         else (lambda pr: expected_depth(pr, budget))
 
@@ -183,10 +196,10 @@ def evaluate(df, week, used, strikes, objective="survive", horizon=18, top=10):
     return r.head(top), base_picks, base_probs, slots, budget, best
 
 
-def protect_list(df, week, used, strikes, horizon=18, n=6):
+def protect_list(df, week, used, strikes, horizon=18, n=6, filled=0):
     """Teams whose loss would hurt the remaining path most."""
     budget = 2 - strikes
-    slots = remaining_slots(week, horizon)
+    slots = remaining_slots(week, horizon, filled)
     all_avail = [t for t in df.index if t not in used]
     _, pr = solve(df, slots, all_avail)
     base = p_survive(pr, budget)
@@ -206,6 +219,10 @@ def main():
     ap.add_argument("--used", default="", help="comma-separated teams already burned")
     ap.add_argument("--strikes", type=int, default=0)
     ap.add_argument("--objective", choices=["survive", "depth"], default="survive")
+    ap.add_argument("--slots-filled", type=int, default=0,
+                    help="how many of THIS week's picks are already made. "
+                         "In a double week where the Thursday pick is in, "
+                         "pass 1 so only the remaining slot is optimised.")
     ap.add_argument("--top", type=int, default=8)
     args = ap.parse_args()
 
@@ -215,7 +232,8 @@ def main():
         raise SystemExit("Three strikes — you're eliminated.")
 
     tbl, path, probs, slots, budget, best = evaluate(
-        df, args.week, used, args.strikes, args.objective, top=args.top)
+        df, args.week, used, args.strikes, args.objective, top=args.top,
+        filled=args.slots_filled)
 
     # The plan, alive-curve and protect list must describe the pick we are
     # actually RECOMMENDING. `path` is the unconstrained Hungarian solution,
@@ -229,7 +247,7 @@ def main():
     if p2 is not None:
         path, probs = p2, pr2
 
-    dbl = args.week in DOUBLE_WEEKS
+    dbl = (args.week in DOUBLE_WEEKS) and args.slots_filled == 0
     print(f"WK{args.week}{' DOUBLE' if dbl else ''} | {args.strikes} strike(s),"
           f" budget {budget} | {len(used)} burned, {len(slots)} slots left")
 
@@ -265,7 +283,8 @@ def main():
     for w, a in ac[::max(1, len(ac)//8)]:
         print(f"    W{w:<3} {a*100:5.1f}%  {'#'*int(a*40)}")
 
-    pl = protect_list(df, args.week, used, args.strikes)
+    pl = protect_list(df, args.week, used, args.strikes,
+                      filled=args.slots_filled)
     print("\n  protect: " + "  ".join(f"{t} {c:.0f}%" for t, c in pl))
 
 
