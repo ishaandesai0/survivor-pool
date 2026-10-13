@@ -131,8 +131,16 @@ def grade(grids, results, min_week):
         used.add(wk)
         chosen.append((wk, sha, date))
         for _, g in games.iterrows():
-            for team, opp, won in ((g.home, g.away, g.winner == g.home),
-                                   (g.away, g.home, g.winner == g.away)):
+            # A tie counts as a WIN for both sides under this pool's rules,
+            # and for calibration it is the only consistent reading: the
+            # model predicts P(team does not lose). Scoring `winner == team`
+            # marks BOTH sides of a tie as defeats, which breaks the
+            # structural property that each game contributes exactly one
+            # win -- that is what produced week 5's spurious +3.33pp bias.
+            tied = str(g.winner).upper() == "TIE"
+            for team, opp, won in (
+                    (g.home, g.away, tied or g.winner == g.home),
+                    (g.away, g.home, tied or g.winner == g.away)):
                 p = df[wk].get(team)
                 if pd.isna(p):
                     continue
@@ -192,6 +200,12 @@ def main():
     print(f"\n  brier {brier:.4f}   log loss {ll:.4f}   "
           f"accuracy {acc*100:.1f}%")
     print(f"  ECE   {ece*100:.2f}pp")
+    n_ties = int((results.winner.astype(str).str.upper() == "TIE").sum())
+    if n_ties and abs(bias) > 1e-6:
+        print(f"  note: {n_ties} tie(s) in the sample. A tie contributes two")
+        print("        wins, so the de-vig identity (one win per game) no")
+        print("        longer forces bias to zero. A small positive bias is")
+        print("        expected and is not evidence of overconfidence.")
     if abs(bias) < 1e-6:
         print(f"  bias  {bias*100:+.2f}pp — structurally zero, not a result:")
         print("        de-vig forces each game's two probabilities to sum to")
@@ -228,10 +242,13 @@ def main():
 
     # per-week, to spot a single bad grid
     print(f"\n  by week:")
+    ties = results[results.winner.astype(str).str.upper() == "TIE"]
+    tie_wk = set(ties.week) if len(ties) else set()
     for w, g in df.groupby("week"):
         b = float((g.p - g.won).mean())
+        note = "  (tie: both sides scored as wins)" if w in tie_wk else ""
         print(f"    W{w}: {len(g)//2:>2} games   bias {b*100:+6.2f}pp   "
-              f"brier {float(((g.p-g.won)**2).mean()):.3f}")
+              f"brier {float(((g.p-g.won)**2).mean()):.3f}{note}")
 
     # your own picks, graded
     try:
